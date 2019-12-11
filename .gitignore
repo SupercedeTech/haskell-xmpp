@@ -1,0 +1,4 @@
+.stack-work/
+hie-logfile.log
+stack.yaml.lock
+
