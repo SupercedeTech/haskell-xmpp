@@ -36,14 +36,26 @@ flag debug
 
 library
   Hs-Source-Dirs: ./src
-  Build-Depends: base > 3 && <=5, random, pretty, array, HaXml >= 1.23.3, mtl >= 1.0, network, html, polyparse, regex-compat, stm, utf8-string
+  Build-Depends: base
+               , random
+               , pretty
+               , array
+               , HaXml
+               , mtl
+               , network
+               , html
+               , polyparse
+               , regex-compat
+               , stm
+               , utf8-string
+               , uuid
   Exposed-modules: Network.XMPP
-                , Network.XMPP.Sasl
-                , Network.XMPP.Core
-                , Network.XMPP.Types
-                , Network.XMPP.Print
-                , Network.XMPP.Helpers
-                , Network.XMPP.Stream
+                 , Network.XMPP.Sasl
+                 , Network.XMPP.Core
+                 , Network.XMPP.Types
+                 , Network.XMPP.Print
+                 , Network.XMPP.Helpers
+                 , Network.XMPP.Stream
           , Network.XMPP.Stanza
           , Network.XMPP.Utils
           , Network.XMPP.IM.Presence

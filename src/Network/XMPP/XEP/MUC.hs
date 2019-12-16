@@ -14,12 +14,10 @@
 --
 -----------------------------------------------------------------------------
 module Network.XMPP.XEP.MUC
-  (
-    mucJoin
-  , mucLeave
-  , mucJoinStanza
-  , mucLeaveStanza
-  ) where
+( mucJoinStanza, mucLeaveStanza
+) where
+
+import Data.UUID           (UUID, toString)
 
 import Network.XMPP.Stanza
 import Network.XMPP.Types
@@ -27,25 +25,30 @@ import Network.XMPP.Print
 import Network.XMPP.JID
 import Network.XMPP.Utils
 
--- | Joins MUC room named by JID (conference\@server\/nick)
-mucJoin :: JID -> XmppStateT ()
-mucJoin jid = do
-  outStanza $ mucJoinStanza jid
+mucJoinStanza :: JID -> UUID -> Stanza 'Presence
+mucJoinStanza jid uuid =
+    MkPresence
+        { pFrom     = Nothing
+        , pTo       = (Just jid)
+        , pId       = toString uuid
+        , pType     = Default
+        , pShowType = Available
+        , pStatus   = ""
+        , pPriority = Nothing
+        , pExt      = [ toContent $
+                            itag "x" [ xmlns "http://jabber.org/protocol/muc" ]
+                      ]
+        }
 
--- | Leaves MUC room named by JID (conference\@server\/nick)
-mucLeave :: JID -> XmppStateT ()
-mucLeave jid = do
-  outStanza $ mucLeaveStanza jid
-
--- | Stanza sent by 'mucJoin'
-mucJoinStanza :: JID -> Stanza 'Presence
-mucJoinStanza jid =
-    MkPresence Nothing (Just jid) "123" Default Available "" Nothing 
-                 [ toContent $
-                   itag "x" [ xmlns "http://jabber.org/protocol/muc" ]
-                 ]
-
--- | Stanza sent by 'mucLeave'
-mucLeaveStanza :: JID -> Stanza 'Presence
-mucLeaveStanza jid =
-    MkPresence Nothing (Just jid) "" Unavailable Available "" Nothing []
+mucLeaveStanza :: JID -> UUID -> Stanza 'Presence
+mucLeaveStanza jid uuid =
+    MkPresence
+        { pFrom     = Nothing
+        , pTo       = (Just jid)
+        , pId       = toString uuid
+        , pType     = Unavailable
+        , pShowType = Available
+        , pStatus   = ""
+        , pPriority = Nothing
+        , pExt      = []
+        }
