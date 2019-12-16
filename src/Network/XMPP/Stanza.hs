@@ -18,11 +18,9 @@
 -----------------------------------------------------------------------------
 
 module Network.XMPP.Stanza
-  (
-    parse
-  , parseM
-  , outStanza
-  ) where 
+( parse, parseM, parseMessage, parsePresence, parseIQ
+, outStanza, outMessage, outPresence, outIQ
+) where 
 
 import Text.XML.HaXml.Xtract.Parse (xtract)
 
