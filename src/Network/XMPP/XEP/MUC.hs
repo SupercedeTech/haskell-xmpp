@@ -14,12 +14,11 @@
 --
 -----------------------------------------------------------------------------
 module Network.XMPP.XEP.MUC
-( mucJoinStanza, mucLeaveStanza
+( mucJoinStanza, mucLeaveStanza, mucDestroyStanza
 ) where
 
 import Data.UUID           (UUID, toString)
 
-import Network.XMPP.Stanza
 import Network.XMPP.Types
 import Network.XMPP.Print    
 import Network.XMPP.JID
@@ -52,3 +51,22 @@ mucLeaveStanza jid uuid =
         , pPriority = Nothing
         , pExt      = []
         }
+
+mucDestroyStanza :: JID -> JID -> UUID -> Stanza 'IQ
+mucDestroyStanza from to uuid =
+    MkIQ
+        { iqFrom = Just from
+        , iqTo   = Just to
+        , iqId   = toString uuid
+        , iqType = Set
+        , iqBody = [ toContent $
+                       itag "query" [ xmlns "http://jabber.org/protocol/muc#owner" ]
+                   ]
+        }
+
+  -- <query xmlns='http://jabber.org/protocol/muc#owner'>
+  --   <destroy jid='coven@chat.shakespeare.lit'>
+  --     <reason>Macbeth doth come.</reason>
+  --   </destroy>
+  -- </query>
+

@@ -41,7 +41,7 @@ import qualified Text.XML.HaXml.Pretty as P (content)
 import Network.XMPP.JID
 
 -- | XMPP message in the parsed form
-type XmppMessage = Content Posn    
+type XmppMessage = Content Posn
 
 -- | XMPP stream, used as a state in XmppStateT state transformer
 data Stream = Stream { handle::Handle 
@@ -120,7 +120,7 @@ data Stanza :: StanzaType -> * where
                 -- ^ Body element (2.1.2.2)
                 , mThread :: String
                 -- ^ Thread element (2.1.2.3)
-                , mExt :: [Content Posn]
+                , mExt :: [XmppMessage]
                 -- ^ Additional contents, used for extensions
                 }
               -> Stanza 'Message
@@ -136,7 +136,7 @@ data Stanza :: StanzaType -> * where
                   -- ^ Status element (2.2.2.2)
                   , pPriority :: Maybe Integer
                   -- ^ Presence priority (2.2.2.3)
-                  , pExt :: [Content Posn]
+                  , pExt :: [XmppMessage]
                   -- ^ Additional contents, used for extensions
                   }
                -> Stanza 'Presence
@@ -146,7 +146,7 @@ data Stanza :: StanzaType -> * where
             -- ^ IQ id (Core-9.2.3)
             , iqType :: IQType
             -- ^ IQ type (Core-9.2.3)
-            , iqBody :: [Content Posn]
+            , iqBody :: [XmppMessage]
             -- ^ Child element (Core-9.2.3)
             }
          -> Stanza 'IQ
