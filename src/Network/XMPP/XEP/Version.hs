@@ -33,10 +33,10 @@ isVersionReq (MkIQ { iqBody = ext }) =
 -- | Replies to version request
 versionAnswer :: String -> String -> String -> Stanza 'IQ -> [CFilter i]
 versionAnswer name version os (MkIQ { }) =
-    [ ptag "query"
-               [ xmlns "jabber:iq:version" ]
-               [ ptag "name" [] [literal name],
-                 ptag "version" [] [literal version],
-                 ptag "os" [] [literal os]
-               ]
+    [ mkElemAttr "query"
+       [ xmlns "jabber:iq:version" ]
+       [ mkElemAttr "name" [] [literal name],
+         mkElemAttr "version" [] [literal version],
+         mkElemAttr "os" [] [literal os]
+       ]
     ]

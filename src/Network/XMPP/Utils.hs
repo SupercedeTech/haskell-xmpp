@@ -20,7 +20,6 @@ module Network.XMPP.Utils
   , noelem
   , sattr
   , strAttr
-  , ptag
   , itag
   , getVals
   , isVal
@@ -60,9 +59,6 @@ strAttr s d = (s, literal d)
 sattr :: a -> String -> (a, CFilter i)
 sattr = strAttr
 
-ptag :: String -> [(String, CFilter i)] -> [CFilter i] -> CFilter i
-ptag = mkElemAttr
-
 itag :: String -> [(String, CFilter i)] -> CFilter i
 itag s att = mkElemAttr s att []
 
@@ -98,7 +94,7 @@ mattr' :: a -> Maybe String -> [(a, CFilter i)]
 mattr' s (Just a) = [ strAttr s a ]
 mattr' _ Nothing = []
 
-debug :: String -> XmppStateT ()
+debug :: String -> XmppMonad ()
 debugIO :: String -> IO ()
 #ifdef DEBUG
 debug = liftIO . putStrLn

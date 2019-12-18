@@ -13,8 +13,7 @@
 -----------------------------------------------------------------------------
 
 module Network.XMPP    
- ( module Network.XMPP.JID
- , module Network.XMPP.Sasl
+ ( module Network.XMPP.Sasl
  , module Network.XMPP.Core
  , module Network.XMPP.Helpers
  , module Network.XMPP.Print
@@ -25,7 +24,6 @@ module Network.XMPP
  , version
  ) where
 
-import Network.XMPP.JID
 import Network.XMPP.Sasl
 import Network.XMPP.Core
 import Network.XMPP.Helpers

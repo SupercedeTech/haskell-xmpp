@@ -14,33 +14,20 @@
 --
 -----------------------------------------------------------------------------
 module Network.XMPP.Stream
-  ( 
-    out
-  , startM
-  , nextM    
-  , withNextM
-  , selectM
-  , xtractM
-  , textractM
-  , withSelectM
-  , withNewStream
-  , withStream
-  , resetStreamHandle
-  , getText
-  , getText_
-  , loopWithPlugins
-  , Plugin(..)
-  , getNextId
-  , lookupAttr
-  , newStream
-  ) where
+( out
+, startM, nextM, withNextM, selectM, xtractM, textractM, withSelectM
+, resetStreamHandle, getText, getText_
+, Plugin(..), loopWithPlugins
+, getNextId, lookupAttr
+)
+where
 
 import Control.Monad.State
 import System.IO
 import Text.ParserCombinators.Poly.State (onFail)
 import Text.XML.HaXml.Lex (xmlLex)
 import Text.XML.HaXml.Parse
-import Text.XML.HaXml.Posn (noPos)
+import Text.XML.HaXml.Posn (Posn, noPos)
 import Text.XML.HaXml.Types
 import qualified Text.XML.HaXml.Pretty as P (content)
 import Text.XML.HaXml.Xtract.Parse (xtract)
@@ -50,21 +37,15 @@ import Network.XMPP.Utils
 import Network.XMPP.Types
 import Network.XMPP.UTF8
 
--- For a definition of 'Stream' see Network.XMPP.Types.
-
--- In the beginning, all Stream buffers are empty, and by default it is bound to stdin.
--- Functions like 'openStreamTo' or 'openStreamViaProxyTo' could override this.
-newStream :: Stream 
-newStream = Stream { handle=stdin, idx=0, lexemes=[] }
 
 -- Main 'workhorses' for Stream are 'out', 'nextM', 'peekM' and 'selectM':
 -- | Sends message into Stream
-out :: XmppMessage -> XmppStateT ()
+out :: Content Posn -> XmppMonad ()
 out xmpp = do h <- gets handle
               liftIO $ hPutXmpp h xmpp
 
 -- | Selects next messages from stream
-nextM :: XmppStateT XmppMessage
+nextM :: XmppMonad (Content Posn)
 nextM = 
   do ls <- gets lexemes
      let (elem, rest) = xmlParseWith element ls
@@ -76,19 +57,19 @@ nextM =
                           return msg
 
 -- | Selects next message matching predicate
-selectM :: (XmppMessage -> Bool) -> XmppStateT XmppMessage
+selectM :: (Content Posn -> Bool) -> XmppMonad (Content Posn)
 selectM p =
   do m <- nextM
      if p m then return m
             else error "Failed to select message"
 
 -- | Pass in xtract query, return query result from the first message where it returns non-empty results
-xtractM :: String ->  XmppStateT [XmppMessage]
+xtractM :: String ->  XmppMonad [Content Posn]
 xtractM q = 
   do m <- selectM (not . null . (xtract id q))
      return $ xtract id q m
 
-textractM :: String -> XmppStateT String
+textractM :: String -> XmppMonad String
 textractM q =  do res <- xtractM q
                   return $ case res of
                                 [] -> ""
@@ -101,7 +82,7 @@ withSelectM p = withM (selectM p)
 
 -- | startM is a special accessor case, since it has to retrieve only opening tag of the '<stream>' message,
 -- which encloses the whole XMPP stream. That's why it does it's own parsing, and does not rely on 'nextM'
-startM :: XmppStateT [Attribute]
+startM :: XmppMonad [Attribute]
 startM =
   do ls <- gets lexemes
      let (starter, rest) = xmlParseWith streamStart ls
@@ -114,14 +95,6 @@ startM =
   streamStart = do ( processinginstruction >> return () ) `onFail` return ()
                    elemOpenTag
 
--- | Convenience wrappers which allow for nicer code like:
---  withNewStream $ do ...
-withNewStream :: XmppStateT a -> IO (a, Stream)
-withNewStream f = runStateT (runXmppStateT f) newStream
-
-withStream :: Stream -> XmppStateT a -> IO (a, Stream)
-withStream s f = runStateT (runXmppStateT f) s
-
 -- | Replaces contents of the Stream with the contents
 --   coming from given handle.
 resetStreamHandle h =
@@ -130,16 +103,20 @@ resetStreamHandle h =
 
 -------------------------------
 -- Basic plugin support
-data Plugin = Plugin { trigger::String, body::(XmppMessage -> XmppStateT ()) }
+data Plugin
+    = Plugin {
+      trigger :: String
+    , body    :: (Content Posn -> XmppMonad ()) 
+    }
 
-loopWithPlugins :: [Plugin] -> XmppStateT ()
+loopWithPlugins :: [Plugin] -> XmppMonad ()
 loopWithPlugins ps =
   let loop = do m <- nextM
                 sequence_ [ (body p) m | p <- ps, not (null (xtract id (trigger p) m)) ]
                 loop
       in loop
 
-getNextId :: XmppStateT Int
+getNextId :: XmppMonad Int
 getNextId =
   do i <- gets idx
      modify (\stream -> stream { idx = i+1 })

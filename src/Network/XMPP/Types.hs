@@ -4,6 +4,7 @@
 {-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE PolyKinds                  #-}
 
 
 -----------------------------------------------------------------------------
@@ -18,19 +19,22 @@
 --
 -----------------------------------------------------------------------------
 module Network.XMPP.Types
-  ( XmppMessage
-  , XmppStateT(runXmppStateT)
-  , Stream(..), StreamType(..)
-  , Stanza(..), StanzaType(..), SomeStanza(..)
-  , MessageType(..), PresenceType(..), IQType(..), ShowType(..)
-  , RosterItem(..)
-  , defaultStreamBlockSize
-  ) where
+( Server, Username, Password, Resource
+, XmppMonad, runXmppMonad, runXmppMonad'
+, Stream(..), StreamType(..)
+, Stanza(..), StanzaType(..), SomeStanza(..)
+, MessageType(..), PresenceType(..), IQType(..), ShowType(..)
+, RosterItem(..)
+, JID(..), JIDOptionalComponent(..)
+)
+where
 
-import System.IO (Handle)
+import System.IO              (Handle, stdin)
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.State    (MonadState, StateT)
+import Control.Monad.State    (MonadState, StateT, runStateT)
 
+import Text.Regex
+import Text.XML             (Node)
 import Text.XML.HaXml.Types (Content)
 import Text.XML.HaXml.Posn (Posn)
 import Text.XML.HaXml.Lex (Token)
@@ -38,29 +42,74 @@ import Text.XML.HaXml.Lex (Token)
 import Text.PrettyPrint.HughesPJ (render)
 import qualified Text.XML.HaXml.Pretty as P (content)
 
-import Network.XMPP.JID
+--------------------------------------------------------------------------------
 
--- | XMPP message in the parsed form
-type XmppMessage = Content Posn
+type Server   = String
+type Username = String
+type Password = String
+type Resource = String
 
--- | XMPP stream, used as a state in XmppStateT state transformer
-data Stream = Stream { handle::Handle 
-                     -- ^ IO handle to the underlying file or socket
-                     , idx :: !Int
-                     -- ^ id of the next message (if needed)
-                     , lexemes :: [Token]
-                     -- ^ Stream of the lexemes coming from server
-                     }
+--------------------------------------------------------------------------------
 
--- | Since XMPP is network-oriented, block size is equal to maximal MTU
-defaultStreamBlockSize :: Int
-defaultStreamBlockSize = 1500
+-- | XMPP stream, used as a state in XmppMonad state transformer
+data Stream
+    = Stream {
+      handle::Handle 
+      -- ^ IO handle to the underlying file or socket
+    , idx :: !Int
+      -- ^ id of the next message (if needed)
+    , lexemes :: [Token]
+      -- ^ Stream of the lexemes coming from server
+    }
 
--- | XmppStateT is a state transformer over IO monad, using Stream as a "state holder".
---  For API, look into 'Network.XMPP.Stream'
-newtype XmppStateT a
-    = XmppStateT { runXmppStateT :: StateT Stream IO a }
+newtype XmppMonad a
+    = XmppMonad { unXmppMonad :: StateT Stream IO a }
     deriving (Functor, Applicative, Monad, MonadIO, MonadState Stream)
+
+runXmppMonad :: XmppMonad a -> IO (a, Stream)
+runXmppMonad = flip runStateT newStream . unXmppMonad
+    where
+        newStream = Stream { handle  = stdin
+                           , idx     = 0
+                           , lexemes = []
+                           }
+
+runXmppMonad' :: Stream -> XmppMonad a -> IO (a, Stream)
+runXmppMonad' s = flip runStateT s . unXmppMonad 
+
+--------------------------------------------------------------------------------
+-- | Jabber ID (JID) datatype
+data JIDOptionalComponent
+    = Name
+    | Server
+    | Resource
+
+data JID :: [JIDOptionalComponent] -> * where
+    JID :: { name     :: Maybe String -- ^ Account name
+           , server   :: String -- ^ Server adress
+           , resource :: Maybe String -- ^ Resource name
+           } -> JID a
+
+instance Read (JID a) where
+    -- Reads JID from string (name@server\/resource)
+    readsPrec _ str = case matchRegexAll regex str of                  
+                        Just (_,_,after,(_:name:_:server:_:_:resource:_:[])) -> [((JID (toMaybe name) server (toMaybe resource)), after)]
+                        Just _ -> []
+                        Nothing -> []
+        where
+          toMaybe "" = Nothing
+          toMaybe s  = Just s
+          regex = mkRegex $ 
+                  "((([^@])+)@)?" ++
+                  "(([^/])+)" ++
+                  "(/((.)+))?"
+
+instance Show (JID a) where
+    -- Shows JID
+  show jid = concat [name', server jid, resource']
+    where name' = maybe "" (++"@") (name jid)
+          resource' = maybe "" ("/"++) (resource jid)
+--------------------------------------------------------------------------------
 
 -- | XMPP Stream type, used in 'stream' pretty-printing combinator and the likes
 data StreamType = Client -- ^ Client-to-server
@@ -73,7 +122,7 @@ instance Show StreamType where
   show ComponentConnect = "jabber:component:connect"
 
 -- | Roster item type (7.1)
-data RosterItem = RosterItem { jid :: JID
+data RosterItem = RosterItem { jid :: JID '[ 'Name, 'Resource]
                              -- ^ Entry's JID
                              , subscribtion :: SubscribtionType
                              -- ^ Subscribtion type 
@@ -99,70 +148,16 @@ instance Read SubscribtionType where
   readsPrec _ "" = [(None, "")]                       
   readsPrec _ _ = error "incorrect subscribtion type"
 
--- | Generic XMPP stream atom
-data SomeStanza = forall a. SomeStanza (Stanza a)
-
-data StanzaType
-    = Message
-    | Presence
-    | IQ
-
-data Stanza :: StanzaType -> * where
-    MkMessage :: { mFrom :: Maybe JID
-                , mTo :: JID
-                , mId :: String
-                -- ^ Message 'from', 'to', 'id' attributes                              
-                , mType :: MessageType
-                -- ^ Message type (2.1.1)
-                , mSubject :: String
-                -- ^ Subject element (2.1.2.1)
-                , mBody :: String
-                -- ^ Body element (2.1.2.2)
-                , mThread :: String
-                -- ^ Thread element (2.1.2.3)
-                , mExt :: [XmppMessage]
-                -- ^ Additional contents, used for extensions
-                }
-              -> Stanza 'Message
-    MkPresence :: { pFrom :: Maybe JID
-                  , pTo :: Maybe JID
-                  , pId :: String
-                  -- ^ Presence 'from', 'to', 'id' attributes
-                  , pType :: PresenceType
-                  -- ^ Presence type (2.2.1)
-                  , pShowType :: ShowType
-                  -- ^ Show element (2.2.2.1)
-                  , pStatus :: String
-                  -- ^ Status element (2.2.2.2)
-                  , pPriority :: Maybe Integer
-                  -- ^ Presence priority (2.2.2.3)
-                  , pExt :: [XmppMessage]
-                  -- ^ Additional contents, used for extensions
-                  }
-               -> Stanza 'Presence
-    MkIQ :: { iqFrom :: Maybe JID
-            , iqTo :: Maybe JID
-            , iqId :: String
-            -- ^ IQ id (Core-9.2.3)
-            , iqType :: IQType
-            -- ^ IQ type (Core-9.2.3)
-            , iqBody :: [XmppMessage]
-            -- ^ Child element (Core-9.2.3)
-            }
-         -> Stanza 'IQ
-
-deriving instance Show (Stanza t)
-              
-data MessageType= Chat | GroupChat | Headline | Normal | MessageError deriving Eq
-                 
-data PresenceType = Default | Unavailable | Subscribe | Subscribed | Unsubscribe | Unsubscribed | Probe | PresenceError deriving Eq
-
-data IQType = Get | Result | Set | IQError deriving Eq
-
-data ShowType = Available | Away | FreeChat | DND | XAway deriving Eq
-
---instance Show (Content a) where
---  show = render . P.content
+    
+--------------------------------------------------------------------------------
+    
+data MessageType 
+    = Chat
+    | GroupChat 
+    | Headline 
+    | Normal 
+    | MessageError 
+    deriving (Eq)
 
 instance Show MessageType where
   show Chat = "chat"
@@ -170,6 +165,25 @@ instance Show MessageType where
   show Headline = "headline"
   show Normal = "normal"
   show MessageError = "error"
+instance Read MessageType where
+  readsPrec _ "chat" = [(Chat, "")]
+  readsPrec _ "groupchat" = [(GroupChat, "")]
+  readsPrec _ "headline" = [(Headline, "")]
+  readsPrec _ "normal" = [(Normal, "")]
+  readsPrec _ "error" = [(MessageError, "")]
+  readsPrec _ "" = [(Chat, "")]                        
+  readsPrec _ _ = error "incorrect message type"
+                 
+data PresenceType
+    = Default 
+    | Unavailable 
+    | Subscribe 
+    | Subscribed 
+    | Unsubscribe 
+    | Unsubscribed 
+    | Probe 
+    | PresenceError 
+    deriving (Eq)
 
 instance Show PresenceType where
   show Default = ""
@@ -180,29 +194,6 @@ instance Show PresenceType where
   show Unsubscribed = "unsubscribed"
   show Probe = "probe"
   show PresenceError = "error"
-
-instance Show IQType where
-  show Get = "get"
-  show Result = "result"
-  show Set = "set"
-  show IQError = "error"
-
-instance Show ShowType where
-  show Available = ""
-  show Away = "away"
-  show FreeChat = "chat"
-  show DND = "dnd"
-  show XAway = "xa"
-
-instance Read MessageType where
-  readsPrec _ "chat" = [(Chat, "")]
-  readsPrec _ "groupchat" = [(GroupChat, "")]
-  readsPrec _ "headline" = [(Headline, "")]
-  readsPrec _ "normal" = [(Normal, "")]
-  readsPrec _ "error" = [(MessageError, "")]
-  readsPrec _ "" = [(Chat, "")]                        
-  readsPrec _ _ = error "incorrect message type"
-
 instance Read PresenceType where
   readsPrec _ "" = [(Default, "")]
   readsPrec _ "available" = [(Default, "")]
@@ -214,7 +205,18 @@ instance Read PresenceType where
   readsPrec _ "probe" = [(Probe, "")]
   readsPrec _ "error" = [(PresenceError, "")]
   readsPrec _ _ = error "incorrect presence type"
-                    
+
+data IQType = Get 
+    | Result 
+    | Set 
+    | IQError
+    deriving (Eq)
+
+instance Show IQType where
+  show Get = "get"
+  show Result = "result"
+  show Set = "set"
+  show IQError = "error"
 instance Read IQType where
   readsPrec _ "get" = [(Get, "")]
   readsPrec _ "result" = [(Result, "")]
@@ -223,6 +225,19 @@ instance Read IQType where
   readsPrec _ "" = [(Get, "")]
   readsPrec _ _ = error "incorrect iq type"
 
+data ShowType = Available 
+	| Away 
+	| FreeChat 
+	| DND 
+	| XAway 
+    deriving (Eq)
+
+instance Show ShowType where
+  show Available = ""
+  show Away = "away"
+  show FreeChat = "chat"
+  show DND = "dnd"
+  show XAway = "xa"
 instance Read ShowType where
   readsPrec _ "" = [(Available, "")]
   readsPrec _ "available" = [(Available, "")]
@@ -232,4 +247,47 @@ instance Read ShowType where
   readsPrec _ "xa" = [(XAway, "")]                        
   readsPrec _ "invisible" = [(Available, "")]
   readsPrec _ _ = error "incorrect <show> value"
+
+--------------------------------------------------------------------------------
+-- | Generic XMPP stream atom
+data SomeStanza = forall a. SomeStanza (Stanza a)
+
+data StanzaType
+    = Message
+    | Presence
+    | IQ
+
+data Stanza :: StanzaType -> * where
+    MkMessage ::
+        { mFrom    :: Maybe (JID '[])
+        , mTo      :: JID '[]
+        , mId      :: String -- ^ Message 'from', 'to', 'id' attributes                              
+        , mType    :: MessageType -- ^ Message type (2.1.1)
+        , mSubject :: String -- ^ Subject element (2.1.2.1)
+        , mBody    :: String -- ^ Body element (2.1.2.2)
+        , mThread  :: String -- ^ Thread element (2.1.2.3)
+        , mExt     :: [Content Posn] -- ^ Additional contents, used for extensions
+        }
+        -> Stanza 'Message
+    MkPresence ::
+        { pFrom     :: Maybe (JID '[])
+        , pTo       :: Maybe (JID '[])
+        , pId       :: String -- ^ Presence 'from', 'to', 'id' attributes
+        , pType     :: PresenceType -- ^ Presence type (2.2.1)
+        , pShowType :: ShowType -- ^ Show element (2.2.2.1)
+        , pStatus   :: String -- ^ Status element (2.2.2.2)
+        , pPriority :: Maybe Integer -- ^ Presence priority (2.2.2.3)
+        , pExt      :: [Content Posn] -- ^ Additional contents, used for extensions
+        }
+        -> Stanza 'Presence
+    MkIQ ::
+        { iqFrom  :: Maybe (JID '[])
+        , iqTo    :: Maybe (JID '[])
+        , iqId    :: String -- ^ IQ id (Core-9.2.3)
+        , iqType  :: IQType -- ^ IQ type (Core-9.2.3)
+        , iqBody  :: [Content Posn] -- ^ Child element (Core-9.2.3)
+        }
+        -> Stanza 'IQ
+
+deriving instance Show (Stanza t)
 

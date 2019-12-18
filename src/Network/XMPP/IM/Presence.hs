@@ -49,14 +49,16 @@ presDND status = mkPresenceD DND status
 -- | Helper to contruct presence Stanza with required attrs
 mkPresence :: PresenceType -> ShowType -> String -> Stanza 'Presence
 mkPresence typ showType status = 
-  MkPresence Nothing -- pFrom
-             Nothing -- PTo
-             ""      -- pId
-             typ
-             showType
-             status
-             (Just 0) -- pPriority :: Maybe Integer
-             []       -- pExt :: [Content Posn]
+    MkPresence 
+        { pFrom     = Nothing
+        , pTo       = Nothing
+        , pId       = ""
+        , pType     = typ
+        , pShowType = showType
+        , pStatus   = status
+        , pPriority = (Just 0)
+        , pExt      = []
+        }
 
 mkPresenceD :: ShowType -> String -> Stanza 'Presence
 mkPresenceD = mkPresence Default

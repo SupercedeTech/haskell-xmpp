@@ -36,20 +36,20 @@ saslAuth :: [String] -- ^ List of auth mechanism available from server, currentl
          -> String   -- ^ Server we are connectint to (hostname)
          -> String   -- ^ Username to connect as
          -> String   -- ^ Password
-         -> XmppStateT ()
+         -> XmppMonad ()
 saslAuth mechanisms server username password
   | "DIGEST-MD5" `elem` mechanisms = saslDigest server username password
   | otherwise                      = error $ "Dont know how to do auth! Available mechanisms are: " ++ show mechanisms
 
 saslDigest server username password = 
   do out $ toContent $
-         ptag "auth"
+         mkElemAttr "auth"
                   [ xmlns "urn:ietf:params:xml:ns:xmpp-sasl",
                     mechanism "DIGEST-MD5" ] []
      ch_text <- withNextM getChallenge
      resp <- liftIO $ saslDigestResponse ch_text username server password
      out $ toContent $
-         ptag "response"
+         mkElemAttr "response"
                   [ xmlns "urn:ietf:params:xml:ns:xmpp-sasl" ]
                   [ literal $ resp ]
      m <- nextM
@@ -57,7 +57,7 @@ saslDigest server username password =
      let chl_text = getChallenge m
      saslDigestRspAuth chl_text
      out $ toContent $
-         ptag "response"
+         mkElemAttr "response"
                   [ xmlns "urn:ietf:params:xml:ns:xmpp-sasl" ] []                  
      m <- nextM
      unless (not $ null $ tag "success" m) (error "Auth failed")

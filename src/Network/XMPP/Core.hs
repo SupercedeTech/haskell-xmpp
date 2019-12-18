@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.XMPP.Core
@@ -19,21 +21,22 @@ module Network.XMPP.Core
 import Control.Monad.State
 import System.IO
 
+import Text.XML.HaXml    (mkElemAttr)
+
 import Network.XMPP.Sasl (saslAuth)
 import Network.XMPP.Print
 import Network.XMPP.Stream
 import Network.XMPP.Types
-import Network.XMPP.JID
 import Network.XMPP.IQ
 import Network.XMPP.Utils
 
 -- | Open connection to specified server and return `Stream' coming from it
 initiateStream :: Handle
-               -> String -- ^ Server (hostname) we are connecting to
-               -> String -- ^ Username to use
-               -> String -- ^ Password to use
-               -> String -- ^ Resource to use
-               -> XmppStateT (JID, Stream) -- ^ Return (jid, stream)
+               -> Server -- ^ Server (hostname) we are connecting to
+               -> Username -- ^ Username to use
+               -> Password -- ^ Password to use
+               -> Resource -- ^ Resource to use
+               -> XmppMonad (JID '[ 'Name, 'Resource ])
 initiateStream h server username password resrc =
   do liftIO $ hSetBuffering h NoBuffering
      resetStreamHandle h
@@ -66,8 +69,8 @@ initiateStream h server username password resrc =
      xtractM "/stream:features/bind" -- `catch` (fail "Binding is not proposed")     
 
      iqSend "bind1" Set 
-                [ ptag "bind" [ xmlns "urn:ietf:params:xml:ns:xmpp-bind" ]
-                  [ ptag "resource" []
+                [ mkElemAttr "bind" [ xmlns "urn:ietf:params:xml:ns:xmpp-bind" ]
+                  [ mkElemAttr "resource" []
                     [ literal $ resrc ]
                   ]
                 ]
@@ -79,5 +82,4 @@ initiateStream h server username password resrc =
 
      xtractM "/iq[@type='result' & @id='session1']" -- (error "Session binding failed")
 
-     stream <- get 
-     return (read $ my_jid, stream)
+     return (read my_jid)

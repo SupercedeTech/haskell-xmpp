@@ -32,7 +32,7 @@ import Text.XML.HaXml.Posn
 iqSend :: String -- ^ ID to use
        -> IQType -- ^ IQ type
        -> [CFilter Posn] -- ^ request contents 
-       -> XmppStateT ()
+       -> XmppMonad ()
 iqSend id t d = do
   outStanza $ MkIQ Nothing Nothing id t (map toContent d)               
 

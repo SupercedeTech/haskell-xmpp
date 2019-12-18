@@ -40,7 +40,6 @@ library
                , random
                , pretty
                , array
-               , HaXml
                , mtl
                , network
                , html
@@ -49,6 +48,8 @@ library
                , stm
                , utf8-string
                , uuid
+               , xml-hamlet
+               , xml-conduit
   Exposed-modules: Network.XMPP
                  , Network.XMPP.Sasl
                  , Network.XMPP.Core
@@ -56,18 +57,18 @@ library
                  , Network.XMPP.Print
                  , Network.XMPP.Helpers
                  , Network.XMPP.Stream
-          , Network.XMPP.Stanza
-          , Network.XMPP.Utils
-          , Network.XMPP.IM.Presence
-          , Network.XMPP.JID
-          , Network.XMPP.IQ
-          , Network.XMPP.UTF8
-          , Network.XMPP.MD5
-          , Network.XMPP.Base64
-          , Network.XMPP.XEP.MUC
-          , Network.XMPP.XEP.Delayed
-          , Network.XMPP.XEP.Version
-          , Network.XMPP.Concurrent
+                 , Network.XMPP.Stanza
+                 , Network.XMPP.Utils
+                 , Network.XMPP.IM.Presence
+                 , Network.XMPP.JID
+                 , Network.XMPP.IQ
+                 , Network.XMPP.UTF8
+                 , Network.XMPP.MD5
+                 , Network.XMPP.Base64
+                 , Network.XMPP.XEP.MUC
+                 , Network.XMPP.XEP.Delayed
+                 , Network.XMPP.XEP.Version
+                 , Network.XMPP.Concurrent
   GHC-Options: -Wall -Wincomplete-patterns -fno-warn-name-shadowing -fno-warn-orphans
   if flag(debug)
      CPP-Options: -DDEBUG

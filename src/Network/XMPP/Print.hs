@@ -32,8 +32,10 @@ module Network.XMPP.Print
   , from
   ) where
 
-import System.IO
-import Text.XML.HaXml hiding (tag)
+import           System.IO
+import           Text.XML.HaXml        hiding (tag)
+import           Text.XML.HaXml.Types  (Content)
+import           Text.XML.HaXml.Posn   (Posn)
 import qualified Text.XML.HaXml.Pretty as P
     
 import Network.XMPP.UTF8
@@ -42,19 +44,19 @@ import Network.XMPP.Utils
 
 -- | Convert the internal representation (built using HaXml combinators) into string, 
 -- and print it out
-putXmppLn :: XmppMessage -> IO ()
+putXmppLn :: Content Posn -> IO ()
 putXmppLn = putStrLn . renderXmpp
 
 -- | Convert the internal representation (built using HaXml combinators) into string, 
 -- and print it to the specified Handle, without trailing newline
-hPutXmpp :: Handle -> XmppMessage -> IO ()
+hPutXmpp :: Handle -> Content Posn -> IO ()
 hPutXmpp h msg = 
   do let str = renderXmpp msg
      debugIO $ "Sending: " ++ str
      hPutStr h $ toUTF8 str
 
 -- | Render HaXML combinators into string, hacked for XMPP
-renderXmpp :: XmppMessage -> String
+renderXmpp :: Content Posn -> String
 renderXmpp theXml =
     case theXml of
       -- stupid hack for <stream:stream> and </stream:stream>
@@ -69,7 +71,7 @@ renderXmpp theXml =
 
 stream :: (Show a) => a -> String -> CFilter i
 stream typ server =
-    ptag "stream:stream"
+    mkElemAttr "stream:stream"
             [ strAttr "xmlns:stream" "http://etherx.jabber.org/streams"
             , strAttr "xml:language" "en"
             , strAttr "version" "1.0"
@@ -80,7 +82,7 @@ stream typ server =
 
 streamEnd :: CFilter i
 streamEnd =
-    ptag "/stream:stream" [] [ itag "" [] ]
+    mkElemAttr "/stream:stream" [] [ itag "" [] ]
 
 ---
 --- Predefined XMPP attributes

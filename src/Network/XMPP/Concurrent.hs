@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.XMPP.Concurrent
@@ -41,7 +42,7 @@ type XmppThreadT a = ReaderT Thread IO a
        
 -- Two streams: input and output. Threads read from input stream and write to output stream.
 -- | Runs thread in XmppState monad
-runThreaded :: XmppThreadT () -> XmppStateT ()
+runThreaded :: XmppThreadT () -> XmppMonad ()
 runThreaded a = do
   in' <- liftIO $ atomically $ newTChan
   out' <- liftIO $ atomically $ newTChan
@@ -54,7 +55,7 @@ runThreaded a = do
       loopRead in' = loop $ 
         parseM >>= liftIO . atomically . writeTChan in'
       loopWrite s out' =
-        void $ withNewStream $ do
+        void $ runXmppMonad $ do
           put s
           loop $ do
             st <- liftIO $ atomically $ readTChan out'

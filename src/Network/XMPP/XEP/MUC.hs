@@ -1,4 +1,5 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds   #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -14,18 +15,35 @@
 --
 -----------------------------------------------------------------------------
 module Network.XMPP.XEP.MUC
-( mucJoinStanza, mucLeaveStanza, mucDestroyStanza
-) where
+( enterRoom, leaveRoom, destroyRoom
+) 
+where
 
 import Data.UUID           (UUID, toString)
+import Text.Hamlet.XML     (xml)
 
 import Network.XMPP.Types
-import Network.XMPP.Print    
-import Network.XMPP.JID
+import Network.XMPP.Print  (xmlns)
 import Network.XMPP.Utils
 
-mucJoinStanza :: JID -> UUID -> Stanza 'Presence
-mucJoinStanza jid uuid =
+
+-- | https://xmpp.org/extensions/xep-0045.html#disco-service
+{-
+queryForAssociatedServices :: JID a -> Server -> UUID -> Stanza 'IQ
+queryForAssociatedServices jid srv uuid =
+    MkIQ
+        { iqFrom = Just from
+        , iqTo   = Just (JID Nothing srv Nothing)
+        , iqId   = toString uuid
+        , iqType = Get
+        , iqBody = [xml|
+                      <query xmlns='http://jabber.org/protocol/disco#items'/>
+                   |]
+        }
+        -}
+
+enterRoom :: JID '[] -> UUID -> Stanza 'Presence
+enterRoom jid uuid =
     MkPresence
         { pFrom     = Nothing
         , pTo       = (Just jid)
@@ -34,13 +52,16 @@ mucJoinStanza jid uuid =
         , pShowType = Available
         , pStatus   = ""
         , pPriority = Nothing
-        , pExt      = [ toContent $
-                            itag "x" [ xmlns "http://jabber.org/protocol/muc" ]
-                      ]
+--        , pExt      = [xml|
+--                        <x xmlns='http://jabber.org/protocol/muc'/>
+--                      |]
+        , pExt   = [ toContent $
+                       itag "x" [ xmlns "http://jabber.org/protocol/muc" ]
+                   ]
         }
 
-mucLeaveStanza :: JID -> UUID -> Stanza 'Presence
-mucLeaveStanza jid uuid =
+leaveRoom :: JID '[] -> UUID -> Stanza 'Presence
+leaveRoom jid uuid =
     MkPresence
         { pFrom     = Nothing
         , pTo       = (Just jid)
@@ -52,8 +73,8 @@ mucLeaveStanza jid uuid =
         , pExt      = []
         }
 
-mucDestroyStanza :: JID -> JID -> UUID -> Stanza 'IQ
-mucDestroyStanza from to uuid =
+destroyRoom :: JID '[] -> JID '[] -> UUID -> Stanza 'IQ
+destroyRoom from to uuid =
     MkIQ
         { iqFrom = Just from
         , iqTo   = Just to
