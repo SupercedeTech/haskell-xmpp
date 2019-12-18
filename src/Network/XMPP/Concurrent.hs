@@ -60,7 +60,10 @@ runThreaded a = do
           loop $ do
             st <- liftIO $ atomically $ readTChan out'
             case st of
-                SomeStanza stnz -> outStanza stnz
+                SomeStanza stnz@MkMessage{}  -> outStanza stnz
+                SomeStanza stnz@MkPresence{} -> outStanza stnz
+                SomeStanza stnz@MkIQ{}       -> outStanza stnz
+                _                            -> pure () -- Won't happen, but we gotta make compiler happy
       loop = sequence_ . repeat
        
 readChanS :: XmppThreadT SomeStanza

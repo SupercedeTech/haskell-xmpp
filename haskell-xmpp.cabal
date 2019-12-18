@@ -41,6 +41,7 @@ library
                , pretty
                , array
                , mtl
+               , HaXml
                , network
                , html
                , polyparse
@@ -50,6 +51,9 @@ library
                , uuid
                , xml-hamlet
                , xml-conduit
+               , text
+               , blaze-markup
+
   Exposed-modules: Network.XMPP
                  , Network.XMPP.Sasl
                  , Network.XMPP.Core

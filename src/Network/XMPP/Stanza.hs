@@ -1,8 +1,15 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE GADTs           #-}
-{-# LANGUAGE RankNTypes      #-}
-{-# LANGUAGE LambdaCase      #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE QuasiQuotes           #-}
+--These can disappear once we remove Content Posn versions
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE FlexibleContexts      #-}
+
+
 
 -----------------------------------------------------------------------------
 -- |
@@ -20,13 +27,19 @@
 
 module Network.XMPP.Stanza
 ( parse, parseM, parseMessage, parsePresence, parseIQ
-, outStanza, outMessage, outPresence, outIQ
+, outStanza
+, StanzaConverter(..)
 ) where 
 
-import Text.XML.HaXml              (mkElemAttr)
+import Text.Hamlet.XML (xml)
+import Text.XML        (Node)
+import qualified Data.Text as T
+
+import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
+                                    QName(N))
 import Text.XML.HaXml.Xtract.Parse (xtract)
 import Text.XML.HaXml.Types        (Content)
-import Text.XML.HaXml.Posn         (Posn)
+import Text.XML.HaXml.Posn         (Posn, noPos)
 
 import Network.XMPP.Types
 import Network.XMPP.Print
@@ -93,47 +106,98 @@ txt :: String      -- ^ xtract-like pattern to match
 txt p m = getText_ $ xtract id p m
 
 -- | Converts stanza to XML and outputs it 
-outStanza :: Stanza a -> XmppMonad ()
-outStanza a@(MkMessage{})  = outMessage a
-outStanza a@(MkPresence{}) = outPresence a
-outStanza a@(MkIQ{})       = outIQ a
+outStanza :: (StanzaConverter t (Content Posn)) => Stanza t -> XmppMonad ()
+outStanza = out . convert
 
-outMessage :: Stanza 'Message -> XmppMonad ()
-outMessage (MkMessage from' to' id' mtype' subject' body' thread' x') =
-    out $ toContent $ 
+--------------------------------------------------------------------------------
+
+class StanzaConverter t a where
+    convert :: Stanza t -> a
+
+noelem :: Content Posn
+noelem = CElem (Elem (N "root") [] []) noPos
+
+instance StanzaConverter 'Message (Content Posn) where
+    convert MkMessage{..} = head $ ($noelem) $
         mkElemAttr "message"
-                ( (mattr "from" from') ++ 
-                [ strAttr "to" (show to'),
-                  strAttr "id" id',
-                  strAttr "type" (show mtype'),
-                  xmllang "en" ] )
-                ([ mkElemAttr "body" [] [literal body'] ] ++
-                 (if subject' /= "" then [ mkElemAttr "subject" [] [literal subject'] ] else []) ++                      
-                 (if thread' /= "" then [ mkElemAttr "thread" [] [literal thread'] ] else []) ++
-                 (map toFilter x'))
+            ( (mattr "from" mFrom) ++
+            [ strAttr "to" (show mTo),
+              strAttr "id" mId,
+              strAttr "type" (show mType),
+              strAttr "xml:lang" "en" ] )
+            ([ mkElemAttr "body" [] [literal mBody] ] ++
+             (if mSubject /= ""
+                then [ mkElemAttr "subject" [] [literal mSubject] ]
+                else []) ++
+             (if mThread /= ""
+                then [ mkElemAttr "thread" [] [literal mThread] ]
+                else []) ++
+             (map (\x -> const [x]) mExt))
+instance StanzaConverter 'Presence (Content Posn) where
+    convert MkPresence{..} = head $ ($noelem) $
+        mkElemAttr "presence"
+            ((mattr "from" pFrom) ++
+             (mattr "to" pTo) ++
+             (if pId /= ""
+                then [strAttr "id" pId]
+                else []) ++
+             (if pType /= Default
+                then [strAttr "type" (show pType)]
+                else []) ++
+             [strAttr "xml:lang" "en" ])
+            ((if pShowType /= Available
+                then [ mkElemAttr "show" [] [literal $ show pShowType] ]
+                else []) ++
+             (if pStatus /= ""
+                then [ mkElemAttr "status" [] [ literal pStatus ] ]
+                else []) ++
+             (if isJust pPriority
+                then [ mkElemAttr "priority" [] [ literal $ show (fromJust pPriority) ] ]
+                else []) ++
+             (map (\x -> const [x]) pExt))
+instance StanzaConverter 'IQ (Content Posn) where
+    convert MkIQ{..} = head $ ($noelem) $
+        mkElemAttr "iq"
+             ((mattr "from" iqFrom) ++
+              (mattr "to" iqTo) ++
+              [ strAttr "id" iqId,
+                strAttr "type" (show iqType),
+                strAttr "xml:lang" "en" ])
+             (map (\x -> const [x]) iqBody)
 
-outPresence :: Stanza 'Presence -> XmppMonad ()
-outPresence (MkPresence from' to' id' ptype' stype' status' priority' x') =
-  out $ toContent $
-      mkElemAttr "presence"
-              ((mattr "from" from') ++
-               (mattr "to" to') ++
-               (if id' /= "" then [strAttr "id" id'] else []) ++
-               (if ptype' /= Default then [strAttr "type" (show ptype')] else []) ++
-               [xmllang "en" ])              
-              ((if stype' /= Available then [ mkElemAttr "show" [] [literal $ show stype'] ] else []) ++
-               (if status' /= "" then [ mkElemAttr "status" [] [ literal status' ] ]  else []) ++
-               (if isJust priority' then [ mkElemAttr "priority" [] [ literal $ show (fromJust priority') ] ] else []) ++
-               (map toFilter x'))
+--------------------------------------------------------------------------------
 
-outIQ :: Stanza 'IQ -> XmppMonad ()
-outIQ MkIQ{..} =
-  out $ toContent $
-      mkElemAttr "iq"
-               ((mattr "from" iqFrom) ++
-                (mattr "to" iqTo) ++       
-                [ strAttr "id" iqId,
-                  sattr "type" (show iqType),
-                  xmllang "en" ])
-               (map toFilter iqBody)               
+instance StanzaConverter 'Message Node where
+    convert MkMessage{..} =
+        let _from    = T.pack $ maybe "" show mFrom
+            _to      = T.pack $ show mTo
+            _id      = T.pack   mId
+            _type    = T.pack $ show mType
+            _subject = T.pack   mSubject
+            _body    = T.pack   mBody
+            _thread  = T.pack   mThread
+            fromAttr = maybe [] (\x -> [("from", show x)]) mFrom
+            testAttr = [ ("subject", "_subject")
+                       , ("thread", "_thread")
+                       ]
+        in head [xml|
+            <message
+                *{ fromAttr }
+                to=#{ _to }
+                id=#{ _id }
+                type=#{ _type }
+                xml:lang=en
+                >
+                <body
+                    *{ testAttr }
+                    >#{ _body }
+    |]
+    --         ^{ mExt' }
+    -- |]
+    --
+
+instance StanzaConverter 'Presence [Node] where
+    convert MkPresence{..} = [xml|<x>|]
+instance StanzaConverter 'IQ [Node] where
+    convert MkIQ{..} = [xml|<x>|]
 

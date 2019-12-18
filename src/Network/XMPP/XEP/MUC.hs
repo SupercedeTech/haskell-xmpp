@@ -22,8 +22,10 @@ where
 import Data.UUID           (UUID, toString)
 import Text.Hamlet.XML     (xml)
 
+import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
+                                    QName(N))
+import Text.XML.HaXml.Posn         (Posn, noPos)
 import Network.XMPP.Types
-import Network.XMPP.Print  (xmlns)
 import Network.XMPP.Utils
 
 
@@ -41,6 +43,8 @@ queryForAssociatedServices jid srv uuid =
                    |]
         }
         -}
+noelem :: Content Posn
+noelem = CElem (Elem (N "root") [] []) noPos
 
 enterRoom :: JID '[] -> UUID -> Stanza 'Presence
 enterRoom jid uuid =
@@ -55,8 +59,10 @@ enterRoom jid uuid =
 --        , pExt      = [xml|
 --                        <x xmlns='http://jabber.org/protocol/muc'/>
 --                      |]
-        , pExt   = [ toContent $
-                       itag "x" [ xmlns "http://jabber.org/protocol/muc" ]
+        , pExt   = [ head $ ($noelem) $
+                       mkElemAttr "x"
+                        [ strAttr "xmlns" "http://jabber.org/protocol/muc" ]
+                        []
                    ]
         }
 
@@ -80,8 +86,10 @@ destroyRoom from to uuid =
         , iqTo   = Just to
         , iqId   = toString uuid
         , iqType = Set
-        , iqBody = [ toContent $
-                       itag "query" [ xmlns "http://jabber.org/protocol/muc#owner" ]
+        , iqBody = [ head $ ($noelem) $
+                       mkElemAttr "query"
+                        [ strAttr "xmlns" "http://jabber.org/protocol/muc#owner" ]
+                        []
                    ]
         }
 

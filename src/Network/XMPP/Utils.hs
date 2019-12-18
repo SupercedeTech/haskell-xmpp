@@ -14,13 +14,7 @@
 -----------------------------------------------------------------------------
 
 module Network.XMPP.Utils
-  (
-    toContent
-  , toFilter
-  , noelem
-  , sattr
-  , strAttr
-  , itag
+  ( strAttr
   , getVals
   , isVal
   , getText
@@ -42,25 +36,13 @@ import Text.XML.HaXml.Xtract.Parse (xtract)
 import Network.XMPP.Types
 
 -- | Conversion from\/to HaXML's Content and CFilter 
-toContent :: CFilter Posn -> Content Posn
-toContent filter =
-    head $ filter (CElem noelem noPos) 
+--toContent :: CFilter Posn -> Content Posn
+--toContent f =
+--    head $ f (CElem noelem noPos)
 
-toFilter :: Content Posn -> CFilter Posn
-toFilter x =  (\_ -> [x])
-
-noelem :: Element i
-noelem = 
-    Elem (N "root") [] []
 
 strAttr :: a -> String -> (a, CFilter i)
 strAttr s d = (s, literal d)
-
-sattr :: a -> String -> (a, CFilter i)
-sattr = strAttr
-
-itag :: String -> [(String, CFilter i)] -> CFilter i
-itag s att = mkElemAttr s att []
 
 -- | Returns strings extracted by xtract query 
 getVals :: String ->

@@ -26,7 +26,10 @@ import Network.XMPP.Utils
 import Network.XMPP.Concurrent
     
 import Text.XML.HaXml
-import Text.XML.HaXml.Posn    
+import Text.XML.HaXml.Posn
+
+noelem :: Content Posn
+noelem = CElem (Elem (N "root") [] []) noPos
 
 -- | Send IQ of specified type with supplied data
 iqSend :: String -- ^ ID to use
@@ -34,7 +37,7 @@ iqSend :: String -- ^ ID to use
        -> [CFilter Posn] -- ^ request contents 
        -> XmppMonad ()
 iqSend id t d = do
-  outStanza $ MkIQ Nothing Nothing id t (map toContent d)               
+    outStanza $ MkIQ Nothing Nothing id t (map (head . ($noelem)) d)
 
 -- Extract IQ reply that matches the supplied predicate from the event stream and send it (transformed)        
 iqReplyTo :: (Stanza 'IQ -> Bool) -- ^ Predicate used to match required IQ reply
@@ -50,4 +53,4 @@ iqReplyTo p t = do
     where
       transform :: (Stanza 'IQ -> [CFilter Posn]) -> Stanza 'IQ -> Stanza 'IQ
       transform t s@(MkIQ from' to' id' type' body') =
-          MkIQ to' from' id' Result (map toContent $ t s)
+          MkIQ to' from' id' Result (map (head . ($noelem)) $ t s)

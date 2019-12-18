@@ -33,6 +33,7 @@ import System.IO              (Handle, stdin)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.State    (MonadState, StateT, runStateT)
 
+import Text.Blaze             (ToMarkup (toMarkup))
 import Text.Regex
 import Text.XML             (Node)
 import Text.XML.HaXml.Types (Content)
@@ -109,6 +110,11 @@ instance Show (JID a) where
   show jid = concat [name', server jid, resource']
     where name' = maybe "" (++"@") (name jid)
           resource' = maybe "" ("/"++) (resource jid)
+
+
+instance ToMarkup (JID a) where
+    toMarkup = toMarkup . show
+
 --------------------------------------------------------------------------------
 
 -- | XMPP Stream type, used in 'stream' pretty-printing combinator and the likes
@@ -250,7 +256,7 @@ instance Read ShowType where
 
 --------------------------------------------------------------------------------
 -- | Generic XMPP stream atom
-data SomeStanza = forall a. SomeStanza (Stanza a)
+data SomeStanza = forall (a :: StanzaType). SomeStanza (Stanza a)
 
 data StanzaType
     = Message

@@ -23,6 +23,10 @@ import Data.List
 import Numeric (showHex)
 import System.Random (newStdGen, randoms)
 import Text.XML.HaXml.Combinators hiding (when)
+import Text.XML.HaXml.Posn         (Posn, noPos)
+import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
+                                    QName(N))
+
 
 import Network.XMPP.Base64 as B64
 import Network.XMPP.MD5 
@@ -41,31 +45,38 @@ saslAuth mechanisms server username password
   | "DIGEST-MD5" `elem` mechanisms = saslDigest server username password
   | otherwise                      = error $ "Dont know how to do auth! Available mechanisms are: " ++ show mechanisms
 
-saslDigest server username password = 
-  do out $ toContent $
-         mkElemAttr "auth"
-                  [ xmlns "urn:ietf:params:xml:ns:xmpp-sasl",
-                    mechanism "DIGEST-MD5" ] []
-     ch_text <- withNextM getChallenge
-     resp <- liftIO $ saslDigestResponse ch_text username server password
-     out $ toContent $
-         mkElemAttr "response"
-                  [ xmlns "urn:ietf:params:xml:ns:xmpp-sasl" ]
+
+saslDigest server username password = do
+    out $ head (auth noelem)
+    ch_text <- withNextM getChallenge
+    resp <- liftIO $ saslDigestResponse ch_text username server password
+    out $ head (response resp noelem)
+    m <- nextM
+    when (not $ null $ tag "failure" $ m) $
+        (error "Auth failure") -- TODO Oo! ehrm, no!
+    let chl_text = getChallenge m
+    saslDigestRspAuth chl_text
+    out $ head (sndResponse noelem)
+    m <- nextM
+    unless (not $ null $ tag "success" m) $
+        (error "Auth failed") -- TODO Oo! ehrm, no!
+    where
+        noelem = CElem (Elem (N "root") [] []) noPos
+        auth = mkElemAttr "auth"
+                  [ strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-sasl"
+                  , strAttr "mechanism" "DIGEST-MD5"
+                  ]
+                  []
+        response resp = mkElemAttr "response"
+                  [ strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-sasl" ]
                   [ literal $ resp ]
-     m <- nextM
-     when (not $ null $ tag "failure" $ m) (error "Auth failure")
-     let chl_text = getChallenge m
-     saslDigestRspAuth chl_text
-     out $ toContent $
-         mkElemAttr "response"
-                  [ xmlns "urn:ietf:params:xml:ns:xmpp-sasl" ] []                  
-     m <- nextM
-     unless (not $ null $ tag "success" m) (error "Auth failed")
-  where
-  getChallenge c = 
-    case (tag "challenge" /> txt) c of
-         [] -> error "Wheres challenge?"
-         x  -> getText_ x
+        sndResponse = mkElemAttr "response"
+                  [ strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-sasl" ]
+                  []
+        getChallenge c =
+            case (tag "challenge" /> txt) c of
+                [] -> error "Wheres challenge?"
+                x  -> getText_ x
 
 saslDigestResponse chl username server password =
   let pairs = get_pairs $ B64.decode chl

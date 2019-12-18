@@ -22,14 +22,6 @@ module Network.XMPP.Print
   , streamEnd
     -- XMPP primitives: attributes
   , to
-  , xmlns
-  , xmllang
-  , language
-  , stream_version
-  , mechanism
-  , type_
-  , id_
-  , from
   ) where
 
 import           System.IO
@@ -76,41 +68,17 @@ stream typ server =
             , strAttr "xml:language" "en"
             , strAttr "version" "1.0"
             , strAttr "to" server
-            , xmlns (show typ)
+            , strAttr "xmlns" (show typ)
             ]
-            [ itag "" [] ]  
+            [ mkElemAttr "" [] []  ]
 
 streamEnd :: CFilter i
 streamEnd =
-    mkElemAttr "/stream:stream" [] [ itag "" [] ]
+    mkElemAttr "/stream:stream" [] [ mkElemAttr "" [] [] ]
 
 ---
 --- Predefined XMPP attributes
 ---
 to :: String -> (String, CFilter i)
 to = strAttr "to"
-
-xmlns :: String -> (String, CFilter i)
-xmlns = strAttr "xmlns"
-
-language :: String -> (String, CFilter i)
-language = strAttr "xml:language" 
-
-xmllang :: String -> (String, CFilter i)
-xmllang = strAttr "xml:lang" 
-
-stream_version :: String -> (String, CFilter i)
-stream_version = strAttr "version"
-
-mechanism :: String -> (String, CFilter i)
-mechanism = strAttr "mechanism"
-
-type_ :: String -> (String, CFilter i)
-type_ = strAttr "type"
-
-id_ :: String -> (String, CFilter i)
-id_ = strAttr "id"
-
-from :: String -> (String, CFilter i)
-from = strAttr "from"
 

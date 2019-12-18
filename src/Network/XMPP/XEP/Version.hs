@@ -34,7 +34,7 @@ isVersionReq (MkIQ { iqBody = ext }) =
 versionAnswer :: String -> String -> String -> Stanza 'IQ -> [CFilter i]
 versionAnswer name version os (MkIQ { }) =
     [ mkElemAttr "query"
-       [ xmlns "jabber:iq:version" ]
+       [ strAttr "xmlns" "jabber:iq:version" ]
        [ mkElemAttr "name" [] [literal name],
          mkElemAttr "version" [] [literal version],
          mkElemAttr "os" [] [literal os]

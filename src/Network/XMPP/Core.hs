@@ -21,7 +21,9 @@ module Network.XMPP.Core
 import Control.Monad.State
 import System.IO
 
-import Text.XML.HaXml    (mkElemAttr)
+import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
+                                    QName(N))
+import Text.XML.HaXml.Posn         (Posn, noPos)
 
 import Network.XMPP.Sasl (saslAuth)
 import Network.XMPP.Print
@@ -29,6 +31,9 @@ import Network.XMPP.Stream
 import Network.XMPP.Types
 import Network.XMPP.IQ
 import Network.XMPP.Utils
+
+noelem :: Content Posn
+noelem = CElem (Elem (N "root") [] []) noPos
 
 -- | Open connection to specified server and return `Stream' coming from it
 initiateStream :: Handle
@@ -40,7 +45,7 @@ initiateStream :: Handle
 initiateStream h server username password resrc =
   do liftIO $ hSetBuffering h NoBuffering
      resetStreamHandle h
-     out $ toContent $
+     out $ head $ ($noelem) $
          stream Client server
      attrs <- startM
      case (lookupAttr "version" attrs) of
@@ -60,7 +65,7 @@ initiateStream h server username password resrc =
      -- Handle the authentication
      saslAuth mechs server username password
 
-     out $ toContent $
+     out $ head $ ($noelem) $
          stream Client server
                 
      startM
@@ -69,7 +74,7 @@ initiateStream h server username password resrc =
      xtractM "/stream:features/bind" -- `catch` (fail "Binding is not proposed")     
 
      iqSend "bind1" Set 
-                [ mkElemAttr "bind" [ xmlns "urn:ietf:params:xml:ns:xmpp-bind" ]
+                [ mkElemAttr "bind" [ strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-bind" ]
                   [ mkElemAttr "resource" []
                     [ literal $ resrc ]
                   ]
@@ -78,7 +83,10 @@ initiateStream h server username password resrc =
      my_jid <- textractM "/iq[@type='result' & @id='bind1']/bind/jid/-"
 
      iqSend "session1" Set 
-                [ itag "session" [xmlns "urn:ietf:params:xml:ns:xmpp-session" ] ]
+                [ mkElemAttr "session"
+                    [strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-session" ]
+                    []
+                ]
 
      xtractM "/iq[@type='result' & @id='session1']" -- (error "Session binding failed")
 
