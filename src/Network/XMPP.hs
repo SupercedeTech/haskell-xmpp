@@ -12,7 +12,7 @@
 --
 -----------------------------------------------------------------------------
 
-module Network.XMPP    
+module Network.XMPP
  ( module Network.XMPP.Sasl
  , module Network.XMPP.Core
  , module Network.XMPP.Helpers

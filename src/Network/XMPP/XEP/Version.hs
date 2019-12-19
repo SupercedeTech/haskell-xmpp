@@ -16,23 +16,22 @@
 -----------------------------------------------------------------------------
 module Network.XMPP.XEP.Version
     ( isVersionReq
-    , versionAnswer 
+    , versionAnswer
     ) where
 
 import Network.XMPP.Types
-import Network.XMPP.Print    
-import Network.XMPP.Utils 
+import Network.XMPP.Utils
 
 import Text.XML.HaXml
     
 -- | True, if stanza is a version request
-isVersionReq :: Stanza 'IQ -> Bool               
-isVersionReq (MkIQ { iqBody = ext }) =
+isVersionReq :: Stanza 'IQ -> Bool
+isVersionReq MkIQ { iqBody = ext } =
     isVal "jabber:iq:version" "/iq/query/@xmlns" ext
 
 -- | Replies to version request
 versionAnswer :: String -> String -> String -> Stanza 'IQ -> [CFilter i]
-versionAnswer name version os (MkIQ { }) =
+versionAnswer name version os MkIQ { } =
     [ mkElemAttr "query"
        [ strAttr "xmlns" "jabber:iq:version" ]
        [ mkElemAttr "name" [] [literal name],

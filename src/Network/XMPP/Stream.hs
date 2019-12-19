@@ -66,7 +66,7 @@ selectM p =
 -- | Pass in xtract query, return query result from the first message where it returns non-empty results
 xtractM :: String ->  XmppMonad [Content Posn]
 xtractM q = 
-  do m <- selectM (not . null . (xtract id q))
+  do m <- selectM (not . null . xtract id q)
      return $ xtract id q m
 
 textractM :: String -> XmppMonad String
@@ -76,9 +76,14 @@ textractM q =  do res <- xtractM q
                                 x  -> getText_ x
 
 -- All accessor functions have a convenience wrappers:
-withM acc f = do m <- acc; return (f m)
+withM :: XmppMonad a -> (a -> b) -> XmppMonad b
+withM acc f = f <$> acc
+
+withNextM :: (Content Posn -> b) -> XmppMonad b
 withNextM = withM nextM
-withSelectM p = withM (selectM p)
+
+withSelectM :: (Content Posn -> Bool) -> (Content Posn -> b) -> XmppMonad b
+withSelectM = withM . selectM
 
 -- | startM is a special accessor case, since it has to retrieve only opening tag of the '<stream>' message,
 -- which encloses the whole XMPP stream. That's why it does it's own parsing, and does not rely on 'nextM'
@@ -90,13 +95,14 @@ startM =
           Left e -> error e
           Right (ElemTag (N "stream:stream") attrs) -> do modify (\stream -> stream { lexemes=rest })
                                                           return attrs
-          Right _ -> error $ "Unexpected element at the beginning of XMPP stream!"
+          Right _ -> error "Unexpected element at the beginning of XMPP stream!"
   where
-  streamStart = do ( processinginstruction >> return () ) `onFail` return ()
+  streamStart = do void processinginstruction `onFail` return ()
                    elemOpenTag
 
 -- | Replaces contents of the Stream with the contents
 --   coming from given handle.
+resetStreamHandle :: (MonadIO m, MonadState Stream m) => Handle -> m ()
 resetStreamHandle h =
   do c <- liftIO $ hGetContents h
      modify (\stream -> stream { handle=h , lexemes = xmlLex "stream" (fromUTF8 c) })
@@ -106,13 +112,13 @@ resetStreamHandle h =
 data Plugin
     = Plugin {
       trigger :: String
-    , body    :: (Content Posn -> XmppMonad ()) 
+    , body    :: Content Posn -> XmppMonad ()
     }
 
 loopWithPlugins :: [Plugin] -> XmppMonad ()
 loopWithPlugins ps =
   let loop = do m <- nextM
-                sequence_ [ (body p) m | p <- ps, not (null (xtract id (trigger p) m)) ]
+                sequence_ [ body p m | p <- ps, not (null (xtract id (trigger p) m)) ]
                 loop
       in loop
 

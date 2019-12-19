@@ -1,5 +1,4 @@
 {-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE KindSignatures             #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -35,13 +34,9 @@ import Control.Monad.State    (MonadState, StateT, runStateT)
 
 import Text.Blaze             (ToMarkup (toMarkup))
 import Text.Regex
-import Text.XML             (Node)
-import Text.XML.HaXml.Types (Content)
-import Text.XML.HaXml.Posn (Posn)
-import Text.XML.HaXml.Lex (Token)
-    
-import Text.PrettyPrint.HughesPJ (render)
-import qualified Text.XML.HaXml.Pretty as P (content)
+import Text.XML.HaXml.Types   (Content)
+import Text.XML.HaXml.Posn    (Posn)
+import Text.XML.HaXml.Lex     (Token)
 
 --------------------------------------------------------------------------------
 
@@ -93,8 +88,9 @@ data JID :: [JIDOptionalComponent] -> * where
 
 instance Read (JID a) where
     -- Reads JID from string (name@server\/resource)
-    readsPrec _ str = case matchRegexAll regex str of                  
-                        Just (_,_,after,(_:name:_:server:_:_:resource:_:[])) -> [((JID (toMaybe name) server (toMaybe resource)), after)]
+    readsPrec _ str = case matchRegexAll regex str of
+                        Just (_, _, after, [_, name, _, server, _, _, resource, _]) ->
+                            [(JID (toMaybe name) server $ toMaybe resource, after)]
                         Just _ -> []
                         Nothing -> []
         where
@@ -232,11 +228,11 @@ instance Read IQType where
   readsPrec _ _ = error "incorrect iq type"
 
 data ShowType = Available 
-	| Away 
-	| FreeChat 
-	| DND 
-	| XAway 
-    deriving (Eq)
+  | Away
+  | FreeChat
+  | DND
+  | XAway
+  deriving (Eq)
 
 instance Show ShowType where
   show Available = ""

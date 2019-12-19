@@ -31,7 +31,6 @@ import           Text.XML.HaXml.Posn   (Posn)
 import qualified Text.XML.HaXml.Pretty as P
     
 import Network.XMPP.UTF8
-import Network.XMPP.Types
 import Network.XMPP.Utils
 
 -- | Convert the internal representation (built using HaXml combinators) into string, 

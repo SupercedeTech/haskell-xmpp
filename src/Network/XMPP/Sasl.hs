@@ -16,21 +16,20 @@ module Network.XMPP.Sasl
   ( saslAuth
   ) where
 
-import Control.Monad (when,unless)
+import Control.Monad (unless)
 import Control.Monad.State (liftIO)
 import Data.Char (chr,ord)
 import Data.List
 import Numeric (showHex)
 import System.Random (newStdGen, randoms)
 import Text.XML.HaXml.Combinators hiding (when)
-import Text.XML.HaXml.Posn         (Posn, noPos)
+import Text.XML.HaXml.Posn         (noPos)
 import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
                                     QName(N))
 
 
 import Network.XMPP.Base64 as B64
-import Network.XMPP.MD5 
-import Network.XMPP.Print
+import Network.XMPP.MD5
 import Network.XMPP.Stream
 import Network.XMPP.Types
 import Network.XMPP.Utils
@@ -45,21 +44,19 @@ saslAuth mechanisms server username password
   | "DIGEST-MD5" `elem` mechanisms = saslDigest server username password
   | otherwise                      = error $ "Dont know how to do auth! Available mechanisms are: " ++ show mechanisms
 
-
+saslDigest :: String -> String -> String -> XmppMonad ()
 saslDigest server username password = do
     out $ head (auth noelem)
     ch_text <- withNextM getChallenge
     resp <- liftIO $ saslDigestResponse ch_text username server password
     out $ head (response resp noelem)
     m <- nextM
-    when (not $ null $ tag "failure" $ m) $
-        (error "Auth failure") -- TODO Oo! ehrm, no!
+    unless (null $ tag "failure" m) $ error "Auth failure" -- TODO Oo! ehrm, no!
     let chl_text = getChallenge m
     saslDigestRspAuth chl_text
     out $ head (sndResponse noelem)
     m <- nextM
-    unless (not $ null $ tag "success" m) $
-        (error "Auth failed") -- TODO Oo! ehrm, no!
+    unless (not $ null $ tag "success" m) $ error "Auth failed" -- TODO Oo! ehrm, no!
     where
         noelem = CElem (Elem (N "root") [] []) noPos
         auth = mkElemAttr "auth"
@@ -69,7 +66,7 @@ saslDigest server username password = do
                   []
         response resp = mkElemAttr "response"
                   [ strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-sasl" ]
-                  [ literal $ resp ]
+                  [ literal resp ]
         sndResponse = mkElemAttr "response"
                   [ strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-sasl" ]
                   []
@@ -78,8 +75,9 @@ saslDigest server username password = do
                 [] -> error "Wheres challenge?"
                 x  -> getText_ x
 
+saslDigestResponse :: String -> String -> String -> String -> IO String
 saslDigestResponse chl username server password =
-  let pairs = get_pairs $ B64.decode chl
+  let pairs = getPairs $ B64.decode chl
       Just qop = lookup "qop" pairs
       Just nonce = lookup "nonce" pairs
       nc = "00000001"
@@ -101,14 +99,15 @@ saslDigestResponse chl username server password =
                               ]
             return $ B64.encode resp
   where
-  md5raw = map (chr . read . ("0x"++ ) . take 2) . takeWhile (not.null) . iterate (drop 2) . md5s
-  hexa str = foldr showHex "" $ map ord str
-  semi_sep = concat . intersperse ":"
+  md5raw   = map (chr . read . ("0x"++ ) . take 2) . takeWhile (not.null) . iterate (drop 2) . md5s
+  hexa     = foldr (showHex . ord) ""
+  semi_sep = intercalate ":"
   make_cnonce = do g <- newStdGen
                    return $ hexa $ map (chr.(`mod` 256)) $ take 8 $ randoms g
 
 -- | Split aaa=bbb,foo="bar" into [("aaa","bbb"),("foo","bar")]
-get_pairs str = 
+getPairs :: String -> [(String, String)]
+getPairs str = 
   let chunks = map (takeWhile (/=',')) $ takeWhile (not.null) $ iterate (drop 1 . dropWhile (/=',')) str
       (keys, values) = unzip $ map (break (=='=')) chunks
       in zip keys $ map trim values
@@ -118,8 +117,9 @@ get_pairs str =
                   x@('\"':_) -> read x
                   x          -> x
 
+saslDigestRspAuth :: String -> XmppMonad ()
 saslDigestRspAuth chl =
-  let pairs = get_pairs $ B64.decode chl
+  let pairs = getPairs $ B64.decode chl
       in case lookup "rspauth" pairs of
               Just _ -> return ()
               Nothing -> error "NO rspauth in SASL digest rspauth!"

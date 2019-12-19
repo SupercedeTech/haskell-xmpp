@@ -48,13 +48,13 @@ initiateStream h server username password resrc =
      out $ head $ ($noelem) $
          stream Client server
      attrs <- startM
-     case (lookupAttr "version" attrs) of
-                                       Just "1.0" -> return ()
-                                       Nothing ->
-                                          -- TODO: JEP 0078
-                                          -- in case of absent of version we wont process stream:features
-                                          error "No version"
-                                       _ -> error "unknown version"
+     case lookupAttr "version" attrs of
+        Just "1.0" -> return ()
+        Nothing ->
+          -- TODO: JEP 0078
+          -- in case of absent of version we wont process stream:features
+          error "No version"
+        _ -> error "unknown version"
      
      debug "Stream started"
      --debug $ "Observing: " ++ render (P.content m)
@@ -67,16 +67,16 @@ initiateStream h server username password resrc =
 
      out $ head $ ($noelem) $
          stream Client server
-                
-     startM
-     
+
+     void startM
+
      -- Bind this session to resource
-     xtractM "/stream:features/bind" -- `catch` (fail "Binding is not proposed")     
+     void $ xtractM "/stream:features/bind" -- `catch` (fail "Binding is not proposed")     
 
      iqSend "bind1" Set 
                 [ mkElemAttr "bind" [ strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-bind" ]
                   [ mkElemAttr "resource" []
-                    [ literal $ resrc ]
+                    [ literal resrc ]
                   ]
                 ]
                 
@@ -88,6 +88,6 @@ initiateStream h server username password resrc =
                     []
                 ]
 
-     xtractM "/iq[@type='result' & @id='session1']" -- (error "Session binding failed")
+     void $ xtractM "/iq[@type='result' & @id='session1']" -- (error "Session binding failed")
 
      return (read my_jid)

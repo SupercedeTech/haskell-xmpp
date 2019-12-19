@@ -161,12 +161,12 @@ But: The Haskell98 Char type is at least 16bits (and often 32), these implementa
 
 import Data.Array
 import Data.Bits
-import Data.Char (chr,ord)
+import Data.Char (chr, ord, isDigit, isAsciiLower)
 
 encodeArray :: Array Int Char
-encodeArray = array (0,64) 
-          [ (0,'A'),  (1,'B'),  (2,'C'),  (3,'D'),  (4,'E'),  (5,'F')                    
-          , (6,'G'),  (7,'H'),  (8,'I'),  (9,'J'),  (10,'K'), (11,'L')                    
+encodeArray = array (0,64)
+          [ (0,'A'),  (1,'B'),  (2,'C'),  (3,'D'),  (4,'E'),  (5,'F')
+          , (6,'G'),  (7,'H'),  (8,'I'),  (9,'J'),  (10,'K'), (11,'L')
           , (12,'M'), (13,'N'), (14,'O'), (15,'P'), (16,'Q'), (17,'R')
           , (18,'S'), (19,'T'), (20,'U'), (21,'V'), (22,'W'), (23,'X')
           , (24,'Y'), (25,'Z'), (26,'a'), (27,'b'), (28,'c'), (29,'d')
@@ -183,23 +183,25 @@ encodeArray = array (0,64)
 -- Hack Alert: In the last entry of the answer, the upper 8 bits encode 
 -- the integer number of 6bit groups encoded in that integer, ie 1, 2, 3.
 -- 0 represents a 4 :(
-int4_char3 :: [Int] -> [Char]
+int4_char3 :: [Int] -> String
 int4_char3 (a:b:c:d:t) = 
     let n = (a `shiftL` 18 .|. b `shiftL` 12 .|. c `shiftL` 6 .|. d)
-    in (chr (n `shiftR` 16 .&. 0xff))
-     : (chr (n `shiftR` 8 .&. 0xff))
-     : (chr (n .&. 0xff)) : int4_char3 t
+    in chr (n `shiftR` 16 .&. 0xff)
+     : chr (n `shiftR` 8 .&. 0xff)
+     : chr (n .&. 0xff) : int4_char3 t
 
 int4_char3 [a,b,c] =
     let n = (a `shiftL` 18 .|. b `shiftL` 12 .|. c `shiftL` 6)
-    in [ (chr (n `shiftR` 16 .&. 0xff))
-       , (chr (n `shiftR` 8 .&. 0xff)) ]
+    in [ chr (n `shiftR` 16 .&. 0xff)
+       , chr (n `shiftR` 8 .&. 0xff) ]
 
 int4_char3 [a,b] = 
     let n = (a `shiftL` 18 .|. b `shiftL` 12)
-    in [ (chr (n `shiftR` 16 .&. 0xff)) ]
+    in [ chr (n `shiftR` 16 .&. 0xff) ]
 
-int4_char3 [] = []     
+int4_char3 [_] = []
+
+int4_char3 [] = []
 
 
 
@@ -209,20 +211,21 @@ int4_char3 [] = []
 -- in the list may not produce 4 integers,
 -- a trailing 2 character group gives 3 integers,
 -- while a trailing single character gives 2 integers.
-char3_int4 :: [Char] -> [Int]
+char3_int4 :: String -> [Int]
 char3_int4 (a:b:c:t) 
     = let n = (ord a `shiftL` 16 .|. ord b `shiftL` 8 .|. ord c)
       in (n `shiftR` 18 .&. 0x3f) : (n `shiftR` 12 .&. 0x3f) : (n `shiftR` 6  .&. 0x3f) : (n .&. 0x3f) : char3_int4 t
 
 char3_int4 [a,b]
     = let n = (ord a `shiftL` 16 .|. ord b `shiftL` 8)
-      in [ (n `shiftR` 18 .&. 0x3f)
-         , (n `shiftR` 12 .&. 0x3f)
-         , (n `shiftR` 6  .&. 0x3f) ]
+      in [ n `shiftR` 18 .&. 0x3f
+         , n `shiftR` 12 .&. 0x3f
+         , n `shiftR` 6  .&. 0x3f ]
     
 char3_int4 [a]
     = let n = (ord a `shiftL` 16)
-      in [(n `shiftR` 18 .&. 0x3f),(n `shiftR` 12 .&. 0x3f)]
+      in [ n `shiftR` 18 .&. 0x3f
+         , n `shiftR` 12 .&. 0x3f ]
 
 char3_int4 [] = []
 
@@ -241,21 +244,23 @@ chop72 str =  let (bgn,end) = splitAt 70 str
 
 -- Pads a base64 code to a multiple of 4 characters, using the special
 -- '=' character.
+quadruplets :: String -> String
 quadruplets (a:b:c:d:t) = a:b:c:d:quadruplets t
 quadruplets [a,b,c]     = [a,b,c,'=']      -- 16bit tail unit
 quadruplets [a,b]       = [a,b,'=','=']    -- 8bit tail unit
+quadruplets [_]         = []
 quadruplets []          = []               -- 24bit tail unit
 
 
-enc :: [Int] -> [Char]
+enc :: [Int] -> String
 enc = quadruplets . map enc1
 
-
+dcd :: String -> [Int]
 dcd [] = []
 dcd (h:t)
     | h <= 'Z' && h >= 'A'  =  ord h - ord 'A'      : dcd t
-    | h >= '0' && h <= '9'  =  ord h - ord '0' + 52 : dcd t
-    | h >= 'a' && h <= 'z'  =  ord h - ord 'a' + 26 : dcd t
+    | isDigit h             =  ord h - ord '0' + 52 : dcd t
+    | isAsciiLower h        =  ord h - ord 'a' + 26 : dcd t
     | h == '+'  = 62 : dcd t
     | h == '/'  = 63 : dcd t
     | h == '='  = []  -- terminate data stream

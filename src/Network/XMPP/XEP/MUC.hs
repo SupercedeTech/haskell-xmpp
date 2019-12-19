@@ -20,7 +20,6 @@ module Network.XMPP.XEP.MUC
 where
 
 import Data.UUID           (UUID, toString)
-import Text.Hamlet.XML     (xml)
 
 import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
                                     QName(N))
@@ -50,7 +49,7 @@ enterRoom :: JID '[] -> UUID -> Stanza 'Presence
 enterRoom jid uuid =
     MkPresence
         { pFrom     = Nothing
-        , pTo       = (Just jid)
+        , pTo       = Just jid
         , pId       = toString uuid
         , pType     = Default
         , pShowType = Available
@@ -70,7 +69,7 @@ leaveRoom :: JID '[] -> UUID -> Stanza 'Presence
 leaveRoom jid uuid =
     MkPresence
         { pFrom     = Nothing
-        , pTo       = (Just jid)
+        , pTo       = Just jid
         , pId       = toString uuid
         , pType     = Unavailable
         , pShowType = Available
