@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE RecordWildCards       #-}
@@ -34,7 +33,7 @@ module Network.XMPP.Stanza
 
 import           Control.Applicative         (Alternative, empty, pure)
 import           Data.Maybe                  (catMaybes)
-import           Data.Text                   (Text, pack)
+import           Data.Text                   (pack)
 import           Network.XMPP.Stream
 import           Network.XMPP.Types
 import           Network.XMPP.Utils
@@ -161,11 +160,8 @@ instance StanzaConverter 'IQ (Content Posn) where
 condToAlt :: (Alternative m) => (x -> Bool) -> x -> m x
 condToAlt f x = if f x then pure x else empty
 
-toAttrList :: [(Text, Maybe Text)] -> [(Text, Text)]
+toAttrList :: Traversable t => [t (Maybe a)] -> [t a]
 toAttrList = catMaybes . fmap sequence
-
-tshow :: (Show a) => a -> Text
-tshow = pack . show
 
 instance StanzaConverter 'Message Node where
   convert MkMessage{..} = head [xml|
@@ -175,14 +171,14 @@ instance StanzaConverter 'Message Node where
   |]
     where
       messageAttrs = toAttrList
-        [ ("from", tshow <$> mFrom)
-        , ("to", Just $ tshow mTo)
-        , ("id", Just $ pack mId)
-        , ("type", Just $ tshow mType)
+        [ ("from", show <$> mFrom)
+        , ("to", Just $ show mTo)
+        , ("id", Just mId)
+        , ("type", Just $ show mType)
         ]
       bodyAttrs = toAttrList
-        [ ("subject", pack <$> condToAlt (not . null) mSubject)
-        , ("thread", pack <$> condToAlt (not . null) mThread)
+        [ ("subject", condToAlt (not . null) mSubject)
+        , ("thread", condToAlt (not . null) mThread)
         ]
 
 instance StanzaConverter 'Presence Node where
@@ -191,13 +187,13 @@ instance StanzaConverter 'Presence Node where
   |]
     where
       attrs = toAttrList
-        [ ("from", tshow <$> pFrom)
-        , ("to", tshow <$> pTo)
-        , ("id", pack <$> condToAlt (not . null) pId)
-        , ("type", tshow <$> condToAlt (/=Default) pType)
-        , ("show", tshow <$> condToAlt (/=Available) pShowType)
-        , ("status", pack <$> condToAlt (not . null) pStatus)
-        , ("priority", tshow <$> pPriority)
+        [ ("from", show <$> pFrom)
+        , ("to", show <$> pTo)
+        , ("id", condToAlt (not . null) pId)
+        , ("type", show <$> condToAlt (/=Default) pType)
+        , ("show", show <$> condToAlt (/=Available) pShowType)
+        , ("status", condToAlt (not . null) pStatus)
+        , ("priority", show <$> pPriority)
         ]
 
 instance StanzaConverter 'IQ Node where
@@ -206,8 +202,8 @@ instance StanzaConverter 'IQ Node where
   |]
     where
       attrs = toAttrList
-        [ ("from", tshow <$> iqFrom)
-        , ("to", tshow <$> iqTo)
-        , ("id", Just $ tshow iqId)
-        , ("type", Just $ tshow iqType)
+        [ ("from", show <$> iqFrom)
+        , ("to", show <$> iqTo)
+        , ("id", Just $ show iqId)
+        , ("type", Just $ show iqType)
         ]
