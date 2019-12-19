@@ -64,7 +64,6 @@ library
                  , Network.XMPP.Stanza
                  , Network.XMPP.Utils
                  , Network.XMPP.IM.Presence
-                 , Network.XMPP.JID
                  , Network.XMPP.IQ
                  , Network.XMPP.UTF8
                  , Network.XMPP.MD5
