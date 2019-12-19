@@ -31,9 +31,12 @@ module Network.XMPP.Stanza
 , StanzaConverter(..)
 ) where 
 
-import Text.Hamlet.XML (xml)
-import Text.XML        (Node)
-import qualified Data.Text as T
+import Control.Applicative (Alternative (empty, (<|>)))
+import Text.Hamlet.XML     (xml)
+import Text.XML            (Node)
+import Data.String         (IsString)
+import Data.Maybe          (fromMaybe)
+import Data.Text           (pack, Text)
 
 import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
                                     QName(N))
@@ -121,10 +124,10 @@ instance StanzaConverter 'Message (Content Posn) where
             "message"
             (  mattr "from" mFrom
             ++ [ strAttr "to"       (show mTo)
-            , strAttr "id"       mId
-            , strAttr "type"     (show mType)
-            , strAttr "xml:lang" "en"
-            ]
+               , strAttr "id"       mId
+               , strAttr "type"     (show mType)
+               , strAttr "xml:lang" "en"
+               ]
             )
         $ mkElemAttr "body" [] [literal mBody]
         :  [mkElemAttr "subject" [] [literal mSubject] | mSubject /= ""]
@@ -159,37 +162,76 @@ instance StanzaConverter 'IQ (Content Posn) where
 
 --------------------------------------------------------------------------------
 
+condToAlt :: (Alternative m) => (x -> Bool) -> x -> m x
+condToAlt f x = if f x
+                    then pure x
+                    else empty
+
+toAttrList :: (a, Maybe b) -> [(a, b)]
+toAttrList (k, (Just v)) = pure (k, v)
+toAttrList _             = empty
+
+tshow :: (Show a) => a -> Text
+tshow = pack . show
+
 instance StanzaConverter 'Message Node where
-    convert MkMessage{..} =
-        let _from    = T.pack $ maybe "" show mFrom
-            _to      = T.pack $ show mTo
-            _id      = T.pack   mId
-            _type    = T.pack $ show mType
-            _subject = T.pack   mSubject
-            _body    = T.pack   mBody
-            _thread  = T.pack   mThread
-            fromAttr = maybe [] (\x -> [("from", show x)]) mFrom
-            testAttr = [ ("subject", "_subject")
-                       , ("thread", "_thread")
-                       ]
-        in head [xml|
-            <message
-                *{ fromAttr }
-                to=#{ _to }
-                id=#{ _id }
-                type=#{ _type }
-                xml:lang=en
-                >
-                <body
-                    *{ testAttr }
-                    >#{ _body }
+    convert MkMessage{..} = head [xml|
+        <message
+            *{ fromAttr }
+            to=#{ tshow mTo }
+            id=#{ pack mId }
+            type=#{ tshow mType }
+            xml:lang=en
+        >
+            <body
+                *{ subjAttr }
+                *{ thrdAttr }
+                >#{ pack mBody }
     |]
     --         ^{ mExt' }
     -- |]
-    --
+        where
+            fromAttr = toAttrList ("from", show <$> mFrom)
+            subjAttr = toAttrList ("subject", condToAlt (not . null) mSubject)
+            thrdAttr = toAttrList ("thread",  condToAlt (not . null) mThread)
 
-instance StanzaConverter 'Presence [Node] where
-    convert MkPresence{..} = [xml|<x>|]
-instance StanzaConverter 'IQ [Node] where
-    convert MkIQ{..} = [xml|<x>|]
+instance StanzaConverter 'Presence Node where
+    convert MkPresence{..} = head [xml|
+        <presence
+            *{ fromAttr }
+            *{ toAttr }
+            *{ idAttr }
+            *{ typeAttr }
+            xml:lang=en
+            *{ showTypeAttr }
+            *{ statusAttr }
+            *{ priorityAttr }
+        >
+    |]
+    --         ^{ mExt' }
+    -- |]
+        where
+            fromAttr     = toAttrList ("from", show <$> pFrom)
+            toAttr       = toAttrList ("to",   show <$> pTo)
+            idAttr       = toAttrList ("id",   condToAlt (not . null) pId)
+            typeAttr     = toAttrList ("type", show <$> condToAlt (/=Default) pType)
+            showTypeAttr = toAttrList ("show", show <$> condToAlt (/=Available) pShowType)
+            statusAttr   = toAttrList ("status", condToAlt (not . null) pStatus)
+            priorityAttr = toAttrList ("priority", show <$> pPriority)
+
+instance StanzaConverter 'IQ Node where
+    convert MkIQ{..} = head [xml|
+        <iq
+            *{ fromAttr }
+            *{ toAttr }
+            id=#{ pack iqId }
+            type=#{ tshow iqType }
+            xml:lang=en
+        >
+    |]
+    --         ^{ iqBody' }
+    -- |]
+        where
+            fromAttr     = toAttrList ("from", show <$> iqFrom)
+            toAttr       = toAttrList ("to",   show <$> iqTo)
 
