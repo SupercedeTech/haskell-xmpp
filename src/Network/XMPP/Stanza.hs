@@ -38,16 +38,13 @@ import qualified Data.Text as T
 import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
                                     QName(N))
 import Text.XML.HaXml.Xtract.Parse (xtract)
-import Text.XML.HaXml.Types        (Content)
 import Text.XML.HaXml.Posn         (Posn, noPos)
 
 import Network.XMPP.Types
-import Network.XMPP.Print
 import Network.XMPP.Stream
 import Network.XMPP.Utils
 
 import Control.Applicative (Alternative, empty, pure)
-import Data.Maybe
 
 -- | Parses XML element producing Stanza
 parse :: (Alternative l) => Content Posn -> l SomeStanza
@@ -83,7 +80,7 @@ parsePresence m = MkPresence
     { pFrom     = mread $ txt "/presence/@from" m
     , pTo       = mread $ txt "/presence/@to" m
     , pId       = txt "/presence/@id" m
-    , pType     = read $ txt "/presence/@type" m          
+    , pType     = read $ txt "/presence/@type" m
     , pShowType = read $ txt "/presence/show/-" m
     , pStatus   = txt "/presence/status/-" m
     , pPriority = mread $ txt "/presence/priority/-" m
@@ -118,52 +115,47 @@ noelem :: Content Posn
 noelem = CElem (Elem (N "root") [] []) noPos
 
 instance StanzaConverter 'Message (Content Posn) where
-    convert MkMessage{..} = head $ ($noelem) $
-        mkElemAttr "message"
-            ( (mattr "from" mFrom) ++
-            [ strAttr "to" (show mTo),
-              strAttr "id" mId,
-              strAttr "type" (show mType),
-              strAttr "xml:lang" "en" ] )
-            ([ mkElemAttr "body" [] [literal mBody] ] ++
-             (if mSubject /= ""
-                then [ mkElemAttr "subject" [] [literal mSubject] ]
-                else []) ++
-             (if mThread /= ""
-                then [ mkElemAttr "thread" [] [literal mThread] ]
-                else []) ++
-             (map (\x -> const [x]) mExt))
+  convert MkMessage {..} =
+    head $ ($ noelem)
+        $ mkElemAttr
+            "message"
+            (  mattr "from" mFrom
+            ++ [ strAttr "to"       (show mTo)
+            , strAttr "id"       mId
+            , strAttr "type"     (show mType)
+            , strAttr "xml:lang" "en"
+            ]
+            )
+        $ mkElemAttr "body" [] [literal mBody]
+        :  [mkElemAttr "subject" [] [literal mSubject] | mSubject /= ""]
+        ++ [mkElemAttr "thread" [] [literal mThread] | mThread /= ""]
+        ++ map (const . (: [])) mExt
+
 instance StanzaConverter 'Presence (Content Posn) where
     convert MkPresence{..} = head $ ($noelem) $
         mkElemAttr "presence"
-            ((mattr "from" pFrom) ++
-             (mattr "to" pTo) ++
-             (if pId /= ""
-                then [strAttr "id" pId]
-                else []) ++
-             (if pType /= Default
-                then [strAttr "type" (show pType)]
-                else []) ++
-             [strAttr "xml:lang" "en" ])
-            ((if pShowType /= Available
-                then [ mkElemAttr "show" [] [literal $ show pShowType] ]
-                else []) ++
-             (if pStatus /= ""
-                then [ mkElemAttr "status" [] [ literal pStatus ] ]
-                else []) ++
-             (if isJust pPriority
-                then [ mkElemAttr "priority" [] [ literal $ show (fromJust pPriority) ] ]
-                else []) ++
-             (map (\x -> const [x]) pExt))
+            (  mattr "from" pFrom
+            ++ mattr "to" pTo
+            ++ [strAttr "id" pId | pId /= ""]
+            ++ [strAttr "type" (show pType) | pType /= Default]
+            ++ [strAttr "xml:lang" "en" ]
+            ) $
+               [mkElemAttr "show" [] [literal $ show pShowType] | pShowType /= Available]
+            ++ [mkElemAttr "status" [] [literal pStatus] | pStatus /= ""]
+            ++ case pPriority of
+                    Just priority ->[ mkElemAttr "priority" [] [ literal $ show priority ]]
+                    Nothing -> []
+            ++ map (const . (: [])) pExt
+
 instance StanzaConverter 'IQ (Content Posn) where
     convert MkIQ{..} = head $ ($noelem) $
         mkElemAttr "iq"
-             ((mattr "from" iqFrom) ++
-              (mattr "to" iqTo) ++
-              [ strAttr "id" iqId,
-                strAttr "type" (show iqType),
-                strAttr "xml:lang" "en" ])
-             (map (\x -> const [x]) iqBody)
+             (mattr "from" iqFrom
+             ++ mattr "to" iqTo
+             ++ [ strAttr "id" iqId
+                , strAttr "type" $ show iqType
+                , strAttr "xml:lang" "en" ])
+             $ map (const . (: [])) iqBody
 
 --------------------------------------------------------------------------------
 

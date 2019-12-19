@@ -23,7 +23,6 @@ module Network.XMPP.Concurrent
   , waitFor
   ) where
 
-import Network.XMPP.Stream
 import Network.XMPP.Stanza
 import Network.XMPP.Types
 import Control.Concurrent
@@ -44,12 +43,12 @@ type XmppThreadT a = ReaderT Thread IO a
 -- | Runs thread in XmppState monad
 runThreaded :: XmppThreadT () -> XmppMonad ()
 runThreaded a = do
-  in' <- liftIO $ atomically $ newTChan
-  out' <- liftIO $ atomically $ newTChan
-  liftIO $ forkIO $ runReaderT a (Thread in' out')
+  in' <- liftIO $ atomically newTChan
+  out' <- liftIO $ atomically newTChan
+  void $ liftIO $ forkIO $ runReaderT a $ Thread in' out'
   s <- get
-  liftIO $ forkIO $ loopWrite s out'
-  liftIO $ forkIO $ connPersist (handle s)
+  void $ liftIO $ forkIO $ loopWrite s out'
+  void $ liftIO $ forkIO $ connPersist $ handle s
   loopRead in' 
     where 
       loopRead in' = loop $ 
@@ -82,17 +81,12 @@ withNewThread a = do
 
 -- | Turns action into infinite loop
 loop :: XmppThreadT () -> XmppThreadT ()
-loop a = do
-  a
-  loop a
+loop a = a >> loop a
 
 waitFor :: (SomeStanza -> Bool) -> XmppThreadT SomeStanza
 waitFor f = do
   s <- readChanS
-  if (f s) then 
-    return s
-    else do
-      waitFor f
+  if f s then return s else waitFor f
 
 connPersist :: Handle -> IO ()
 connPersist h = do

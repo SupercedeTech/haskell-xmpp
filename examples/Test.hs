@@ -1,3 +1,5 @@
+{-# LANGUAGE GADTs #-}
+
 module Main where
 
 import Control.Monad.Trans (liftIO)
@@ -9,45 +11,51 @@ import Network.XMPP.XEP.Version
 import Network.XMPP.Concurrent
 import Control.Monad
 -- import qualified Text.XML.HaXml.Pretty as P (content)
-import Text.XML.HaXml.Xtract.Parse (xtract)
+-- import Text.XML.HaXml.Xtract.Parse (xtract)
 
 iqVersionT1 :: XmppThreadT ()
 iqVersionT1 = do
-  st <- readChanS 
-  liftIO $ putStrLn ("thread1 got next message.")
-  when (isVersionReq st) $ do                        
-    writeChanS $ presAway "thread1"
-    liftIO $ putStrLn ("thread1: it was version request. We sent away presence \"thread1\"")
+  st <- readChanS
+  liftIO $ putStrLn "thread1 got next message."
+  case st of
+    SomeStanza iq@MkIQ {} ->
+      when (isVersionReq iq) $ do
+        writeChanS $ SomeStanza $ presAway "thread1"
+        liftIO $ putStrLn "thread1: it was version request. We sent away presence \"thread1\""
+    _ -> pure ()
   iqVersionT1
 
 iqVersionT2 :: XmppThreadT ()
 iqVersionT2 = do
-  st <- readChanS 
-  liftIO $ putStrLn ("thread2 got next message.")
-  when (isVersionReq st) $ do                        
-    writeChanS $ presAway "thread2"
-    liftIO $ putStrLn ("thread1: it was version request. We sent away presence \"thread2\"")
-  iqVersionT2  
+  st <- readChanS
+  liftIO $ putStrLn "thread2 got next message."
+  case st of
+    SomeStanza iq@MkIQ {} ->
+      when (isVersionReq iq) $ do
+        writeChanS $ SomeStanza $ presAway "thread2"
+        liftIO $ putStrLn "thread1: it was version request. We sent away presence \"thread2\""
+    _ -> pure ()
+  iqVersionT2
 
 iqVersion :: XmppThreadT ()
 iqVersion =
-    loop $ iqReplyTo isVersionReq (versionAnswer "Network.XMPP test" version "Linux")
-    
-main = 
+    loop $ iqReplyTo isVersionReq $ versionAnswer "Network.XMPP test" version "Linux"
+
+main :: IO ()
+main =
  do let user = "testbot"
     let pass = "testing"
     let server = "xmpp.org.ru"
     let resource = "haskell-xmpp-devel"
-    let room = "testing@conference.jabber.ru"    
-    withNewStream $ 
+    let _room = "testing@conference.jabber.ru"
+    void $ runXmppMonad $
       do h <- liftIO $ connectViaTcp server 5222
-         (jid,_) <- initiateStream h server user pass resource
+         jid <- initiateStream h server user pass resource
          liftIO $ putStrLn $ "My jid is " ++ show jid
          outStanza $ presAvailable "Hello, world!"
          runThreaded $ do
-           withNewThread $ iqVersion
-           withNewThread $ iqVersionT2
-           return ()
+           void $ withNewThread iqVersion
+           void $ withNewThread iqVersionT2
 {-         
          -- Query and dump roster
          --out $ iq ! [ id_ "roster-get", type_ "get" ] << query_ "jabber:iq:roster"
@@ -59,9 +67,9 @@ main =
          liftIO $ putStrLn $ show roster
 -}
          -- Set presence to default 
-                   
-         mucJoin (read "testing@conference.jabber.ru/testbot")
-         mucLeave (read "testing@conference.jabber.ru/testbot")
+
+         outStanza $ enterRoom (read "testing@conference.jabber.ru/testbot") undefined
+         outStanza $ leaveRoom (read "testing@conference.jabber.ru/testbot") undefined
 {-                              
          -- Sit in MUC room, echoing all messages
          -- We echo all messages sent to MUC room or private chat,

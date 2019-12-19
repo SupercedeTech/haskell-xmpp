@@ -1,5 +1,6 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DataKinds  #-}
+{-# LANGUAGE GADTs      #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -22,9 +23,8 @@ module Network.XMPP.IQ
 
 import Network.XMPP.Types
 import Network.XMPP.Stanza
-import Network.XMPP.Utils
 import Network.XMPP.Concurrent
-    
+
 import Text.XML.HaXml
 import Text.XML.HaXml.Posn
 
@@ -37,20 +37,21 @@ iqSend :: String -- ^ ID to use
        -> [CFilter Posn] -- ^ request contents 
        -> XmppMonad ()
 iqSend id t d = do
-    outStanza $ MkIQ Nothing Nothing id t (map (head . ($noelem)) d)
+    let body = map (head . ($noelem)) d
+    outStanza $ MkIQ Nothing Nothing id t body
 
 -- Extract IQ reply that matches the supplied predicate from the event stream and send it (transformed)        
 iqReplyTo :: (Stanza 'IQ -> Bool) -- ^ Predicate used to match required IQ reply
           -> (Stanza 'IQ -> [CFilter Posn]) -- ^ transformer function
           -> XmppThreadT ()
 iqReplyTo p t = do
-  s <- waitFor (\x -> case x of
-                        SomeStanza xiq@(MkIQ{}) -> p xiq
-                        _                       -> False)
+  s <- waitFor (\case
+            SomeStanza xiq@MkIQ{} -> p xiq
+            _                       -> False)
   case s of
-    SomeStanza stnz@(MkIQ{}) -> writeChanS (SomeStanza (transform t stnz))
+    SomeStanza stnz@MkIQ{} -> writeChanS (SomeStanza (transform t stnz))
     _                        -> pure ()
     where
       transform :: (Stanza 'IQ -> [CFilter Posn]) -> Stanza 'IQ -> Stanza 'IQ
-      transform t s@(MkIQ from' to' id' type' body') =
+      transform t s@(MkIQ from' to' id' _type' _body') =
           MkIQ to' from' id' Result (map (head . ($noelem)) $ t s)
