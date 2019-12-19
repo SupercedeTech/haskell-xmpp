@@ -163,9 +163,7 @@ instance StanzaConverter 'IQ (Content Posn) where
 --------------------------------------------------------------------------------
 
 condToAlt :: (Alternative m) => (x -> Bool) -> x -> m x
-condToAlt f x = if f x
-                    then pure x
-                    else empty
+condToAlt f x = if f x then pure x else empty
 
 toAttrList :: (a, Maybe b) -> [(a, b)]
 toAttrList (k, (Just v)) = pure (k, v)
@@ -175,63 +173,32 @@ tshow :: (Show a) => a -> Text
 tshow = pack . show
 
 instance StanzaConverter 'Message Node where
-    convert MkMessage{..} = head [xml|
-        <message
-            *{ fromAttr }
-            to=#{ tshow mTo }
-            id=#{ pack mId }
-            type=#{ tshow mType }
-            xml:lang=en
-        >
-            <body
-                *{ subjAttr }
-                *{ thrdAttr }
-                >#{ pack mBody }
-    |]
-    --         ^{ mExt' }
-    -- |]
-        where
-            fromAttr = toAttrList ("from", show <$> mFrom)
-            subjAttr = toAttrList ("subject", condToAlt (not . null) mSubject)
-            thrdAttr = toAttrList ("thread",  condToAlt (not . null) mThread)
+  convert MkMessage{..} = head [xml|
+    <message *{ fromAttr } to=#{ tshow mTo } id=#{ pack mId } type=#{ tshow mType } xml:lang=en>
+      <body *{ subjAttr } *{ thrdAttr } >#{ pack mBody }
+  |]
+    where
+      fromAttr = toAttrList ("from", show <$> mFrom)
+      subjAttr = toAttrList ("subject", condToAlt (not . null) mSubject)
+      thrdAttr = toAttrList ("thread",  condToAlt (not . null) mThread)
 
 instance StanzaConverter 'Presence Node where
-    convert MkPresence{..} = head [xml|
-        <presence
-            *{ fromAttr }
-            *{ toAttr }
-            *{ idAttr }
-            *{ typeAttr }
-            xml:lang=en
-            *{ showTypeAttr }
-            *{ statusAttr }
-            *{ priorityAttr }
-        >
-    |]
-    --         ^{ mExt' }
-    -- |]
-        where
-            fromAttr     = toAttrList ("from", show <$> pFrom)
-            toAttr       = toAttrList ("to",   show <$> pTo)
-            idAttr       = toAttrList ("id",   condToAlt (not . null) pId)
-            typeAttr     = toAttrList ("type", show <$> condToAlt (/=Default) pType)
-            showTypeAttr = toAttrList ("show", show <$> condToAlt (/=Available) pShowType)
-            statusAttr   = toAttrList ("status", condToAlt (not . null) pStatus)
-            priorityAttr = toAttrList ("priority", show <$> pPriority)
+  convert MkPresence{..} = head [xml|
+    <presence *{ fromAttr } *{ toAttr } *{ idAttr } *{ typeAttr } xml:lang=en *{ showTypeAttr } *{ statusAttr } *{ priorityAttr }>
+  |]
+    where
+      fromAttr     = toAttrList ("from", show <$> pFrom)
+      toAttr       = toAttrList ("to",   show <$> pTo)
+      idAttr       = toAttrList ("id",   condToAlt (not . null) pId)
+      typeAttr     = toAttrList ("type", show <$> condToAlt (/=Default) pType)
+      showTypeAttr = toAttrList ("show", show <$> condToAlt (/=Available) pShowType)
+      statusAttr   = toAttrList ("status", condToAlt (not . null) pStatus)
+      priorityAttr = toAttrList ("priority", show <$> pPriority)
 
 instance StanzaConverter 'IQ Node where
-    convert MkIQ{..} = head [xml|
-        <iq
-            *{ fromAttr }
-            *{ toAttr }
-            id=#{ pack iqId }
-            type=#{ tshow iqType }
-            xml:lang=en
-        >
-    |]
-    --         ^{ iqBody' }
-    -- |]
-        where
-            fromAttr     = toAttrList ("from", show <$> iqFrom)
-            toAttr       = toAttrList ("to",   show <$> iqTo)
-
+  convert MkIQ{..} = head [xml|
+    <iq *{ fromAttr } *{ toAttr } id=#{ pack iqId } type=#{ tshow iqType } xml:lang=en>
+  |]
+    where
+      fromAttr = toAttrList ("from", show <$> iqFrom)
+      toAttr   = toAttrList ("to",   show <$> iqTo)
