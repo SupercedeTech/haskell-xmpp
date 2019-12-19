@@ -1,13 +1,13 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE RecordWildCards       #-}
 --These can disappear once we remove Content Posn versions
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 
 
@@ -16,12 +16,12 @@
 -- Module      :  Network.XMPP.Stanza
 -- Copyright   :  (c) pierre, 2007
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
--- 
+--
 -- Maintainer  :  k.pierre.k@gmail.com
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- XMPP stanzas parsing 
+-- XMPP stanzas parsing
 --
 -----------------------------------------------------------------------------
 
@@ -29,25 +29,20 @@ module Network.XMPP.Stanza
 ( parse, parseM, parseMessage, parsePresence, parseIQ
 , outStanza
 , StanzaConverter(..)
-) where 
+) where
 
-import Control.Applicative (Alternative (empty, (<|>)))
-import Text.Hamlet.XML     (xml)
-import Text.XML            (Node)
-import Data.String         (IsString)
-import Data.Maybe          (fromMaybe)
-import Data.Text           (pack, Text)
-
-import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
-                                    QName(N))
-import Text.XML.HaXml.Xtract.Parse (xtract)
-import Text.XML.HaXml.Posn         (Posn, noPos)
-
-import Network.XMPP.Types
-import Network.XMPP.Stream
-import Network.XMPP.Utils
-
-import Control.Applicative (Alternative, empty, pure)
+import           Control.Applicative         (Alternative, empty, pure)
+import           Data.Maybe                  (catMaybes)
+import           Data.Text                   (pack)
+import           Network.XMPP.Stream
+import           Network.XMPP.Types
+import           Network.XMPP.Utils
+import           Text.Hamlet.XML             (xml)
+import           Text.XML                    (Node)
+import           Text.XML.HaXml              (Content (CElem), Element (Elem),
+                                              QName (N), mkElemAttr)
+import           Text.XML.HaXml.Posn         (Posn, noPos)
+import           Text.XML.HaXml.Xtract.Parse (xtract)
 
 -- | Parses XML element producing Stanza
 parse :: (Alternative l) => Content Posn -> l SomeStanza
@@ -63,7 +58,7 @@ parse m
 -- | We shall skip over unknown messages, rather than crashing
 parseM :: XmppMonad SomeStanza
 parseM = parse <$> nextM >>= \case
-    Nothing -> parseM 
+    Nothing -> parseM
     Just v  -> pure v
 
 parseMessage :: Content Posn -> Stanza 'Message
@@ -105,7 +100,7 @@ txt :: String      -- ^ xtract-like pattern to match
     -> String      -- ^ result of extraction
 txt p m = getText_ $ xtract id p m
 
--- | Converts stanza to XML and outputs it 
+-- | Converts stanza to XML and outputs it
 outStanza :: (StanzaConverter t (Content Posn)) => Stanza t -> XmppMonad ()
 outStanza = out . convert
 
@@ -163,75 +158,52 @@ instance StanzaConverter 'IQ (Content Posn) where
 --------------------------------------------------------------------------------
 
 condToAlt :: (Alternative m) => (x -> Bool) -> x -> m x
-condToAlt f x = if f x
-                    then pure x
-                    else empty
+condToAlt f x = if f x then pure x else empty
 
-toAttrList :: (a, Maybe b) -> [(a, b)]
-toAttrList (k, (Just v)) = pure (k, v)
-toAttrList _             = empty
-
-tshow :: (Show a) => a -> Text
-tshow = pack . show
+toAttrList :: Traversable t => [t (Maybe a)] -> [t a]
+toAttrList = catMaybes . fmap sequence
 
 instance StanzaConverter 'Message Node where
-    convert MkMessage{..} = head [xml|
-        <message
-            *{ fromAttr }
-            to=#{ tshow mTo }
-            id=#{ pack mId }
-            type=#{ tshow mType }
-            xml:lang=en
-        >
-            <body
-                *{ subjAttr }
-                *{ thrdAttr }
-                >#{ pack mBody }
-    |]
-    --         ^{ mExt' }
-    -- |]
-        where
-            fromAttr = toAttrList ("from", show <$> mFrom)
-            subjAttr = toAttrList ("subject", condToAlt (not . null) mSubject)
-            thrdAttr = toAttrList ("thread",  condToAlt (not . null) mThread)
+  convert MkMessage{..} = head [xml|
+    <message *{messageAttrs} xml:lang=en>
+      <body *{bodyAttrs}>
+        #{pack mBody}
+  |]
+    where
+      messageAttrs = toAttrList
+        [ ("from", show <$> mFrom)
+        , ("to", Just $ show mTo)
+        , ("id", Just mId)
+        , ("type", Just $ show mType)
+        ]
+      bodyAttrs = toAttrList
+        [ ("subject", condToAlt (not . null) mSubject)
+        , ("thread", condToAlt (not . null) mThread)
+        ]
 
 instance StanzaConverter 'Presence Node where
-    convert MkPresence{..} = head [xml|
-        <presence
-            *{ fromAttr }
-            *{ toAttr }
-            *{ idAttr }
-            *{ typeAttr }
-            xml:lang=en
-            *{ showTypeAttr }
-            *{ statusAttr }
-            *{ priorityAttr }
-        >
-    |]
-    --         ^{ mExt' }
-    -- |]
-        where
-            fromAttr     = toAttrList ("from", show <$> pFrom)
-            toAttr       = toAttrList ("to",   show <$> pTo)
-            idAttr       = toAttrList ("id",   condToAlt (not . null) pId)
-            typeAttr     = toAttrList ("type", show <$> condToAlt (/=Default) pType)
-            showTypeAttr = toAttrList ("show", show <$> condToAlt (/=Available) pShowType)
-            statusAttr   = toAttrList ("status", condToAlt (not . null) pStatus)
-            priorityAttr = toAttrList ("priority", show <$> pPriority)
+  convert MkPresence{..} = head [xml|
+    <presence *{attrs} xml:lang=en>
+  |]
+    where
+      attrs = toAttrList
+        [ ("from", show <$> pFrom)
+        , ("to", show <$> pTo)
+        , ("id", condToAlt (not . null) pId)
+        , ("type", show <$> condToAlt (/=Default) pType)
+        , ("show", show <$> condToAlt (/=Available) pShowType)
+        , ("status", condToAlt (not . null) pStatus)
+        , ("priority", show <$> pPriority)
+        ]
 
 instance StanzaConverter 'IQ Node where
-    convert MkIQ{..} = head [xml|
-        <iq
-            *{ fromAttr }
-            *{ toAttr }
-            id=#{ pack iqId }
-            type=#{ tshow iqType }
-            xml:lang=en
-        >
-    |]
-    --         ^{ iqBody' }
-    -- |]
-        where
-            fromAttr     = toAttrList ("from", show <$> iqFrom)
-            toAttr       = toAttrList ("to",   show <$> iqTo)
-
+  convert MkIQ{..} = head [xml|
+    <iq *{attrs} xml:lang=en>
+  |]
+    where
+      attrs = toAttrList
+        [ ("from", show <$> iqFrom)
+        , ("to", show <$> iqTo)
+        , ("id", Just $ show iqId)
+        , ("type", Just $ show iqType)
+        ]
