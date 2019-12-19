@@ -32,24 +32,18 @@ module Network.XMPP.Stanza
 , StanzaConverter(..)
 ) where
 
-import           Control.Applicative         (Alternative (empty, (<|>)))
+import           Control.Applicative         (Alternative, empty, pure)
 import           Data.Maybe                  (catMaybes)
-import           Data.Maybe                  (fromMaybe)
-import           Data.String                 (IsString)
 import           Data.Text                   (Text, pack)
+import           Network.XMPP.Stream
+import           Network.XMPP.Types
+import           Network.XMPP.Utils
 import           Text.Hamlet.XML             (xml)
 import           Text.XML                    (Node)
-
 import           Text.XML.HaXml              (Content (CElem), Element (Elem),
                                               QName (N), mkElemAttr)
 import           Text.XML.HaXml.Posn         (Posn, noPos)
 import           Text.XML.HaXml.Xtract.Parse (xtract)
-
-import           Network.XMPP.Stream
-import           Network.XMPP.Types
-import           Network.XMPP.Utils
-
-import           Control.Applicative         (Alternative, empty, pure)
 
 -- | Parses XML element producing Stanza
 parse :: (Alternative l) => Content Posn -> l SomeStanza
