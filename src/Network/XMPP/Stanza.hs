@@ -32,27 +32,25 @@ module Network.XMPP.Stanza
 ) where
 
 import           Control.Applicative         (Alternative, empty, pure)
-import           Data.Maybe                  (catMaybes)
+import           Data.Maybe                  (mapMaybe)
 import           Data.Text                   (pack)
-import           Network.XMPP.Stream
-import           Network.XMPP.Types
-import           Network.XMPP.Utils
 import           Text.Hamlet.XML             (xml)
 import           Text.XML                    (Node)
 import           Text.XML.HaXml              (Content (CElem), Element (Elem),
                                               QName (N), mkElemAttr)
 import           Text.XML.HaXml.Posn         (Posn, noPos)
 import           Text.XML.HaXml.Xtract.Parse (xtract)
+import           Network.XMPP.Stream
+import           Network.XMPP.Types
+import           Network.XMPP.Utils
 
 -- | Parses XML element producing Stanza
-parse :: (Alternative l) => Content Posn -> l SomeStanza
-parse m
-    | xtractp id "/message" m  = pure (SomeStanza (parseMessage m))
-    | xtractp id "/presence" m = pure (SomeStanza (parsePresence m))
-    | xtractp id "/iq" m       = pure (SomeStanza (parseIQ m))
-    | otherwise                = empty
- where
-  xtractp f p m = not . null $ xtract f p m
+parse :: Alternative l => Content Posn -> l SomeStanza
+parse m | xtractp id "/message" m  = pure $ SomeStanza $ parseMessage m
+        | xtractp id "/presence" m = pure $ SomeStanza $ parsePresence m
+        | xtractp id "/iq" m       = pure $ SomeStanza $ parseIQ m
+        | otherwise                = empty
+  where xtractp f p m = not . null $ xtract f p m
 
 -- | Gets next message from stream and parses it
 -- | We shall skip over unknown messages, rather than crashing
@@ -157,11 +155,11 @@ instance StanzaConverter 'IQ (Content Posn) where
 
 --------------------------------------------------------------------------------
 
-condToAlt :: (Alternative m) => (x -> Bool) -> x -> m x
+condToAlt :: Alternative m => (x -> Bool) -> x -> m x
 condToAlt f x = if f x then pure x else empty
 
 toAttrList :: Traversable t => [t (Maybe a)] -> [t a]
-toAttrList = catMaybes . fmap sequence
+toAttrList = mapMaybe sequence
 
 instance StanzaConverter 'Message Node where
   convert MkMessage{..} = head [xml|

@@ -25,7 +25,7 @@ import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
                                     QName(N))
 import Text.XML.HaXml.Posn         (Posn, noPos)
 
-import Network.XMPP.Sasl (saslAuth)
+import Network.XMPP.Sasl           (saslAuth)
 import Network.XMPP.Print
 import Network.XMPP.Stream
 import Network.XMPP.Types
@@ -41,7 +41,7 @@ initiateStream :: Handle
                -> Username -- ^ Username to use
                -> Password -- ^ Password to use
                -> Resource -- ^ Resource to use
-               -> XmppMonad (JID '[ 'Name, 'Resource ])
+               -> XmppMonad (JID 'NodeResource)
 initiateStream h server username password resrc =
   do liftIO $ hSetBuffering h NoBuffering
      resetStreamHandle h
@@ -71,7 +71,7 @@ initiateStream h server username password resrc =
      void startM
 
      -- Bind this session to resource
-     void $ xtractM "/stream:features/bind" -- `catch` (fail "Binding is not proposed")     
+     void $ xtractM "/stream:features/bind" -- `catch` (fail "Binding is not proposed")
 
      iqSend "bind1" Set 
                 [ mkElemAttr "bind" [ strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-bind" ]
