@@ -161,7 +161,7 @@ But: The Haskell98 Char type is at least 16bits (and often 32), these implementa
 
 import Data.Array
 import Data.Bits
-import Data.Char (chr, ord, isDigit, isAsciiLower)
+import Data.Char (chr, ord)
 
 encodeArray :: Array Int Char
 encodeArray = array (0,64)
@@ -258,9 +258,9 @@ enc = quadruplets . map enc1
 dcd :: String -> [Int]
 dcd [] = []
 dcd (h:t)
-    | h <= 'Z' && h >= 'A'  =  ord h - ord 'A'      : dcd t
-    | isDigit h             =  ord h - ord '0' + 52 : dcd t
-    | isAsciiLower h        =  ord h - ord 'a' + 26 : dcd t
+    | h <= 'Z' && h >= 'A' =  ord h - ord 'A'      : dcd t
+    | h >= '0' && h <= '9' =  ord h - ord '0' + 52 : dcd t
+    | h >= 'a' && h <= 'z' =  ord h - ord 'a' + 26 : dcd t
     | h == '+'  = 62 : dcd t
     | h == '/'  = 63 : dcd t
     | h == '='  = []  -- terminate data stream

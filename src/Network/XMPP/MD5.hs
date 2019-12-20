@@ -251,8 +251,7 @@ md5_h :: XYZ -> Word32
 md5_h (x, y, z) = x `xor` y `xor` z
 
 md5_i :: XYZ -> Word32
-md5_i (x, y, z) = y `xor` x .|. complement z
-
+md5_i (x, y, z) = y `xor` (x .|. (complement z))
 
 -- The magic numbers from the RFC.
 
