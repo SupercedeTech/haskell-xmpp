@@ -55,6 +55,9 @@ newtype Str = Str String
 newtype BoolList = BoolList [Bool]
 newtype WordList = WordList ([Word32], Zord64)
 
+addABCD :: ABCD -> ABCD -> ABCD
+addABCD (ABCD (a1, b1, c1, d1))  (ABCD (a2, b2, c2, d2)) = ABCD (a1 + a2, b1 + b2, c1 + c2, d1 + d2)
+
 -- Anything we want to work out the MD5 of must be an instance of class MD5
 
 class MD5 a where
@@ -122,13 +125,6 @@ instance MD5 WordList where
  finished (WordList (_, z)) = z == 0
 
 
-instance Num ABCD where
- ABCD (a1, b1, c1, d1) + ABCD (a2, b2, c2, d2) = ABCD (a1 + a2, b1 + b2, c1 + c2, d1 + d2)
- ABCD (_a1, _b1, _c1, _d1) * ABCD (_a2, _b2, _c2, _d2) = undefined
- abs x = x
- signum _ = undefined
- fromInteger _ = undefined
-
 -- ===================== EXPORTED FUNCTIONS ========================
 
 
@@ -167,7 +163,7 @@ md5_main :: (MD5 a) =>
 md5_main padded ilen abcd m
  = if finished m && padded
    then abcd
-   else md5_main padded' (ilen + 512) (abcd + abcd') m''
+   else md5_main padded' (ilen + 512) (abcd `addABCD` abcd') m''
  where (m16, l, m') = get_next m
        len' = ilen + fromIntegral l
        ((m16', _, m''), padded') = if not padded && l < 512
