@@ -45,11 +45,11 @@ queryForAssociatedServices jid srv uuid =
 noelem :: Content Posn
 noelem = CElem (Elem (N "root") [] []) noPos
 
-enterRoom :: JID '[] -> UUID -> Stanza 'Presence
+enterRoom :: JID 'NodeResource -> UUID -> Stanza 'Presence
 enterRoom jid uuid =
     MkPresence
         { pFrom     = Nothing
-        , pTo       = Just jid
+        , pTo       = Just $ SomeJID jid
         , pId       = toString uuid
         , pType     = Default
         , pShowType = Available
@@ -65,11 +65,11 @@ enterRoom jid uuid =
                    ]
         }
 
-leaveRoom :: JID '[] -> UUID -> Stanza 'Presence
+leaveRoom :: JID 'NodeResource -> UUID -> Stanza 'Presence
 leaveRoom jid uuid =
     MkPresence
         { pFrom     = Nothing
-        , pTo       = Just jid
+        , pTo       = Just $ SomeJID jid
         , pId       = toString uuid
         , pType     = Unavailable
         , pShowType = Available
@@ -78,11 +78,11 @@ leaveRoom jid uuid =
         , pExt      = []
         }
 
-destroyRoom :: JID '[] -> JID '[] -> UUID -> Stanza 'IQ
+destroyRoom :: JID 'NodeResource -> JID 'Resource -> UUID -> Stanza 'IQ
 destroyRoom from to uuid =
     MkIQ
-        { iqFrom = Just from
-        , iqTo   = Just to
+        { iqFrom = Just $ SomeJID from
+        , iqTo   = Just $ SomeJID to
         , iqId   = toString uuid
         , iqType = Set
         , iqBody = [ head $ ($noelem) $

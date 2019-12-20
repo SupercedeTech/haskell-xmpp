@@ -94,4 +94,3 @@ connPersist h = do
   debugIO "<space added>"
   threadDelay 30000000
   connPersist h
-    
