@@ -1,3 +1,4 @@
+{-# LANGUAGE QuasiQuotes #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.XMPP.Sasl
@@ -23,16 +24,13 @@ import Data.List
 import Numeric (showHex)
 import System.Random (newStdGen, randoms)
 import Text.XML.HaXml.Combinators hiding (when)
-import Text.XML.HaXml.Posn         (noPos)
-import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
-                                    QName(N))
-
+import Text.Hamlet.XML
+import qualified Data.Text as T
 
 import Network.XMPP.Base64 as B64
 import Network.XMPP.MD5
 import Network.XMPP.Stream
 import Network.XMPP.Types
-import Network.XMPP.Utils
 
 -- | Perform authentication over already-open channel
 saslAuth :: [String] -- ^ List of auth mechanism available from server, currently only "DIGEST-MD5" is supported
@@ -46,30 +44,24 @@ saslAuth mechanisms server username password
 
 saslDigest :: String -> String -> String -> XmppMonad ()
 saslDigest server username password = do
-    out $ head (auth noelem)
+    out $ head auth
     ch_text <- withNextM getChallenge
     resp <- liftIO $ saslDigestResponse ch_text username server password
-    out $ head (response resp noelem)
+    out $ head $ response resp
     m <- nextM
     unless (null $ tag "failure" m) $ error "Auth failure" -- TODO Oo! ehrm, no!
     let chl_text = getChallenge m
     saslDigestRspAuth chl_text
-    out $ head (sndResponse noelem)
+    out $ head sndResponse
     m <- nextM
     unless (not $ null $ tag "success" m) $ error "Auth failed" -- TODO Oo! ehrm, no!
     where
-        noelem = CElem (Elem (N "root") [] []) noPos
-        auth = mkElemAttr "auth"
-                  [ strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-sasl"
-                  , strAttr "mechanism" "DIGEST-MD5"
-                  ]
-                  []
-        response resp = mkElemAttr "response"
-                  [ strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-sasl" ]
-                  [ literal resp ]
-        sndResponse = mkElemAttr "response"
-                  [ strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-sasl" ]
-                  []
+        auth = [xml|<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" mechanism="DIGEST-MD5">|]
+        response resp = [xml|
+          <response xmlns="urn:ietf:params:xml:ns:xmpp-sasl">
+            #{T.pack resp}
+          |]
+        sndResponse = [xml|<response xmlns="urn:ietf:params:xml:ns:xmpp-sasl">|]
         getChallenge c =
             case (tag "challenge" /> txt) c of
                 [] -> error "Wheres challenge?"
@@ -85,10 +77,10 @@ saslDigestResponse chl username server password =
       realm = server 
       in do cnonce <- make_cnonce
             let a1 = semi_sep [ md5raw (Str (semi_sep [username,realm,password])), nonce, cnonce]
-            let a2 = "AUTHENTICATE:" ++ digest_uri
-            let t  = semi_sep [ md5s (Str a1), nonce, nc, cnonce, qop, md5s (Str a2) ]
-            let response = md5s (Str t)
-            let resp = concat [ "username=", show username
+                a2 = "AUTHENTICATE:" ++ digest_uri
+                t  = semi_sep [ md5s (Str a1), nonce, nc, cnonce, qop, md5s (Str a2) ]
+                response = md5s (Str t)
+                resp = concat [ "username=", show username
                               , ",realm=", show realm
                               , ",nonce=", show nonce
                               , ",cnonce=", show cnonce

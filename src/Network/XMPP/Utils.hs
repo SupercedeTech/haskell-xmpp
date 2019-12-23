@@ -32,7 +32,8 @@ import Text.XML.HaXml.Posn
 import qualified Text.XML.HaXml.Pretty as P
 import Text.PrettyPrint.HughesPJ  (hcat)
 import Text.XML.HaXml.Xtract.Parse (xtract)
-    
+import Control.Monad.IO.Class (liftIO)
+
 import Network.XMPP.Types
 
 -- | Conversion from\/to HaXML's Content and CFilter 
@@ -45,26 +46,24 @@ strAttr :: a -> String -> (a, CFilter i)
 strAttr s d = (s, literal d)
 
 -- | Returns strings extracted by xtract query 
-getVals :: String ->
-          [Content Posn] ->
-          [String]
-getVals q ext = map (\x -> getText_ $ xtract id q x) ext
+getVals :: String -> [Content Posn] -> [String]
+getVals q = map (getText_ . xtract id q)
 
 -- | Queries xml for specific value
 -- @isVal str = any (== str) . getVals@
 isVal :: String -> String -> [Content Posn] -> Bool
-isVal str cont = any (== str) . (getVals cont)
+isVal str cont = any (== str) . getVals cont
 
 -- 
 getText :: Content i -> String
-getText cs@(CString{})  = render . P.content $ cs
-getText cs@(CRef{})     = render . P.content $ cs
+getText cs@CString{}  = render . P.content $ cs
+getText cs@CRef{}     = render . P.content $ cs
 getText x               = error $ "Attempt to extract text from content that is not a string: " ++ render ( P.content x )
 
 getText_ :: [Content i] -> String
 getText_ = render . hcat . map P.content
            
-mread :: (Read a) => [Char] -> Maybe a
+mread :: Read a => String -> Maybe a
 mread "" = Nothing
 mread a = Just $ read a
 

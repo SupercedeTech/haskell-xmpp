@@ -27,27 +27,27 @@ import Network.XMPP.Types
 
 -- | Default presence, should be sent at first
 presAvailable :: String -- ^ Status message
-              -> Stanza 'Presence
-presAvailable status = MkPresence Nothing Nothing "" Default Available status (Just 0) []
+              -> Stanza 'Presence 'Outgoing
+presAvailable status = MkPresence Nothing Nothing "" Default Available status (Just 0) [] SOutgoing
 
 -- | Should be sent at last
-presUnavailable :: String -> Stanza 'Presence
-presUnavailable status = mkPresenceU Available status
+presUnavailable :: String -> Stanza 'Presence 'Outgoing
+presUnavailable = mkPresenceU Available
 
-presAway :: String -> Stanza 'Presence
-presAway status = mkPresenceD Away status
-                  
-presXa :: String -> Stanza 'Presence
-presXa status = mkPresenceD XAway status
+presAway :: String -> Stanza 'Presence 'Outgoing
+presAway = mkPresenceD Away
 
-presChat :: String -> Stanza 'Presence
-presChat status = mkPresenceD FreeChat status
+presXa :: String -> Stanza 'Presence 'Outgoing
+presXa = mkPresenceD XAway
 
-presDND :: String -> Stanza 'Presence
-presDND status = mkPresenceD DND status
+presChat :: String -> Stanza 'Presence 'Outgoing
+presChat = mkPresenceD FreeChat
+
+presDND :: String -> Stanza 'Presence 'Outgoing
+presDND = mkPresenceD DND
 
 -- | Helper to contruct presence Stanza with required attrs
-mkPresence :: PresenceType -> ShowType -> String -> Stanza 'Presence
+mkPresence :: PresenceType -> ShowType -> String -> Stanza 'Presence 'Outgoing
 mkPresence typ showType status = 
     MkPresence 
         { pFrom     = Nothing
@@ -56,12 +56,13 @@ mkPresence typ showType status =
         , pType     = typ
         , pShowType = showType
         , pStatus   = status
-        , pPriority = (Just 0)
+        , pPriority = Just 0
         , pExt      = []
+        , pPurpose = SOutgoing
         }
 
-mkPresenceD :: ShowType -> String -> Stanza 'Presence
+mkPresenceD :: ShowType -> String -> Stanza 'Presence 'Outgoing
 mkPresenceD = mkPresence Default
 
-mkPresenceU :: ShowType -> String -> Stanza 'Presence
+mkPresenceU :: ShowType -> String -> Stanza 'Presence 'Outgoing
 mkPresenceU = mkPresence Unavailable

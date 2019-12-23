@@ -14,7 +14,7 @@
 --
 -----------------------------------------------------------------------------
 module Network.XMPP.Stream
-( out
+( out, outPosn
 , startM, nextM, withNextM, selectM, xtractM, textractM, withSelectM
 , resetStreamHandle, getText, getText_
 , Plugin(..), loopWithPlugins
@@ -25,6 +25,7 @@ where
 import Control.Monad.State
 import System.IO
 import Text.ParserCombinators.Poly.State (onFail)
+import Text.XML           (Node)
 import Text.XML.HaXml.Lex (xmlLex)
 import Text.XML.HaXml.Parse
 import Text.XML.HaXml.Posn (Posn, noPos)
@@ -32,7 +33,7 @@ import Text.XML.HaXml.Types
 import qualified Text.XML.HaXml.Pretty as P (content)
 import Text.XML.HaXml.Xtract.Parse (xtract)
 
-import Network.XMPP.Print
+import Network.XMPP.Print (hPutNode, hPutXmpp)
 import Network.XMPP.Utils
 import Network.XMPP.Types
 import Network.XMPP.UTF8
@@ -40,9 +41,16 @@ import Network.XMPP.UTF8
 
 -- Main 'workhorses' for Stream are 'out', 'nextM', 'peekM' and 'selectM':
 -- | Sends message into Stream
-out :: Content Posn -> XmppMonad ()
-out xmpp = do h <- gets handle
-              liftIO $ hPutXmpp h xmpp
+out :: Node -> XmppMonad ()
+out xmpp = do
+  h <- gets handle
+  liftIO $ hPutNode h xmpp
+
+outPosn :: Content Posn -> XmppMonad ()
+outPosn xmpp = do
+  h <- gets handle
+  liftIO $ hPutXmpp h xmpp
+
 
 -- | Selects next messages from stream
 nextM :: XmppMonad (Content Posn)

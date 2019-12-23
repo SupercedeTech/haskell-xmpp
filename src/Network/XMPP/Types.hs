@@ -5,6 +5,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ExistentialQuantification  #-}
 {-# LANGUAGE PolyKinds                  #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE TupleSections              #-}
 
@@ -28,6 +31,8 @@ module Network.XMPP.Types
 , MessageType(..), PresenceType(..), IQType(..), ShowType(..)
 , RosterItem(..)
 , JID(..), JIDQualification(..), SomeJID(..)
+, StanzaPurpose(..)
+, Sing(..), IncomingSym0, OutgoingSym0, SStanzaPurpose
 )
 where
 
@@ -42,6 +47,8 @@ import Text.Regex
 import Text.XML.HaXml.Types   (Content)
 import Text.XML.HaXml.Posn    (Posn)
 import Text.XML.HaXml.Lex     (Token)
+import Text.XML               (Node)
+import Data.Singletons.TH     (genSingletons, Sing(..))
 
 --------------------------------------------------------------------------------
 
@@ -317,14 +324,25 @@ instance Read ShowType where
 
 --------------------------------------------------------------------------------
 -- | Generic XMPP stream atom
-data SomeStanza = forall (a :: StanzaType). SomeStanza (Stanza a)
+
+data StanzaPurpose = Incoming | Outgoing
+  deriving (Eq, Show)
+
+$(genSingletons [''StanzaPurpose])
+
+data SomeStanza = forall (a :: StanzaType) p. SomeStanza (Stanza a p)
 
 data StanzaType
     = Message
     | Presence
     | IQ
 
-data Stanza :: StanzaType -> * where
+
+type family DataByPurpose (p :: StanzaPurpose) where
+  DataByPurpose 'Incoming = [Content Posn]
+  DataByPurpose 'Outgoing = [Node]
+
+data Stanza :: StanzaType -> StanzaPurpose -> * where
     MkMessage ::
         { mFrom    :: Maybe (JID 'NodeResource)
         , mTo      :: SomeJID
@@ -333,9 +351,10 @@ data Stanza :: StanzaType -> * where
         , mSubject :: String -- ^ Subject element (2.1.2.1)
         , mBody    :: String -- ^ Body element (2.1.2.2)
         , mThread  :: String -- ^ Thread element (2.1.2.3)
-        , mExt     :: [Content Posn] -- ^ Additional contents, used for extensions
+        , mExt     :: DataByPurpose p -- ^ Additional contents, used for extensions
+        , mPurpose :: Sing p
         }
-        -> Stanza 'Message
+        -> Stanza 'Message p
     MkPresence ::
         { pFrom     :: Maybe SomeJID
         , pTo       :: Maybe SomeJID
@@ -344,17 +363,25 @@ data Stanza :: StanzaType -> * where
         , pShowType :: ShowType -- ^ Show element (2.2.2.1)
         , pStatus   :: String -- ^ Status element (2.2.2.2)
         , pPriority :: Maybe Integer -- ^ Presence priority (2.2.2.3)
-        , pExt      :: [Content Posn] -- ^ Additional contents, used for extensions
+        , pExt      :: DataByPurpose p -- ^ Additional contents, used for extensions
+        , pPurpose :: Sing p
         }
-        -> Stanza 'Presence
+        -> Stanza 'Presence p
     MkIQ ::
         { iqFrom  :: Maybe SomeJID
         , iqTo    :: Maybe SomeJID
         , iqId    :: String -- ^ IQ id (Core-9.2.3)
         , iqType  :: IQType -- ^ IQ type (Core-9.2.3)
-        , iqBody  :: [Content Posn] -- ^ Child element (Core-9.2.3)
+        , iqBody  :: DataByPurpose p -- ^ Child element (Core-9.2.3)
+        , iqPurpose :: Sing p
         }
-        -> Stanza 'IQ
+        -> Stanza 'IQ p
 
-deriving instance Show (Stanza t)
+instance Show (Sing 'Incoming) where
+  show _ = "incoming"
 
+instance Show (Sing 'Outgoing) where
+  show _ = "outgoing"
+
+deriving instance Show (Stanza t 'Incoming)
+deriving instance Show (Stanza t 'Outgoing)

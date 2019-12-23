@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -21,19 +22,16 @@ module Network.XMPP.Core
 import Control.Monad.State
 import System.IO
 
-import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
-                                    QName(N))
-import Text.XML.HaXml.Posn         (Posn, noPos)
-
-import Network.XMPP.Sasl           (saslAuth)
+import qualified Data.Text as T
+import Text.Hamlet.XML   (xml)
+import Text.XML.HaXml.Types (Content(..), Element(..), QName(..))
+import Text.XML.HaXml.Posn (noPos, Posn)
+import Network.XMPP.Sasl (saslAuth)
 import Network.XMPP.Print
 import Network.XMPP.Stream
 import Network.XMPP.Types
 import Network.XMPP.IQ
 import Network.XMPP.Utils
-
-noelem :: Content Posn
-noelem = CElem (Elem (N "root") [] []) noPos
 
 -- | Open connection to specified server and return `Stream' coming from it
 initiateStream :: Handle
@@ -45,8 +43,7 @@ initiateStream :: Handle
 initiateStream h server username password resrc =
   do liftIO $ hSetBuffering h NoBuffering
      resetStreamHandle h
-     out $ head $ ($noelem) $
-         stream Client server
+     outPosn $ head $ stream Client server noelem
      attrs <- startM
      case lookupAttr "version" attrs of
         Just "1.0" -> return ()
@@ -65,8 +62,7 @@ initiateStream h server username password resrc =
      -- Handle the authentication
      saslAuth mechs server username password
 
-     out $ head $ ($noelem) $
-         stream Client server
+     outPosn $ head $ stream Client server noelem
 
      void startM
 
@@ -74,20 +70,19 @@ initiateStream h server username password resrc =
      void $ xtractM "/stream:features/bind" -- `catch` (fail "Binding is not proposed")
 
      iqSend "bind1" Set 
-                [ mkElemAttr "bind" [ strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-bind" ]
-                  [ mkElemAttr "resource" []
-                    [ literal resrc ]
-                  ]
-                ]
+                  [xml|
+                    <bind xmlns="urn:ietf:params:xml:ns:xmpp-bind">
+                      <resource>#{T.pack resrc}
+                  |]
                 
      my_jid <- textractM "/iq[@type='result' & @id='bind1']/bind/jid/-"
 
      iqSend "session1" Set 
-                [ mkElemAttr "session"
-                    [strAttr "xmlns" "urn:ietf:params:xml:ns:xmpp-session" ]
-                    []
-                ]
+                [xml| <session xmlns="urn:ietf:params:xml:ns:xmpp-session"> |]
 
      void $ xtractM "/iq[@type='result' & @id='session1']" -- (error "Session binding failed")
 
      return (read my_jid)
+
+noelem :: Content Posn
+noelem = CElem (Elem (N "root") [] []) noPos

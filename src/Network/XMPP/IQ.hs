@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DataKinds  #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE GADTs      #-}
 
 -----------------------------------------------------------------------------
@@ -24,6 +25,7 @@ module Network.XMPP.IQ
 import Network.XMPP.Types
 import Network.XMPP.Stanza
 import Network.XMPP.Concurrent
+import Text.XML (Node)
 
 import Text.XML.HaXml
 import Text.XML.HaXml.Posn
@@ -34,24 +36,22 @@ noelem = CElem (Elem (N "root") [] []) noPos
 -- | Send IQ of specified type with supplied data
 iqSend :: String -- ^ ID to use
        -> IQType -- ^ IQ type
-       -> [CFilter Posn] -- ^ request contents 
+       -> [Node] -- ^ request contents 
        -> XmppMonad ()
-iqSend id t d = do
-    let body = map (head . ($noelem)) d
-    outStanza $ MkIQ Nothing Nothing id t body
+iqSend id t body = outStanza $ MkIQ Nothing Nothing id t body SOutgoing
 
 -- Extract IQ reply that matches the supplied predicate from the event stream and send it (transformed)        
-iqReplyTo :: (Stanza 'IQ -> Bool) -- ^ Predicate used to match required IQ reply
-          -> (Stanza 'IQ -> [CFilter Posn]) -- ^ transformer function
+iqReplyTo :: (Stanza 'IQ 'Incoming -> Bool) -- ^ Predicate used to match required IQ reply
+          -> (Stanza 'IQ 'Incoming -> [CFilter Posn]) -- ^ transformer function
           -> XmppThreadT ()
 iqReplyTo p t = do
   s <- waitFor (\case
-            SomeStanza xiq@MkIQ{} -> p xiq
-            _                       -> False)
+            SomeStanza xiq@MkIQ{ iqPurpose = SIncoming } -> p xiq
+            _                     -> False)
   case s of
-    SomeStanza stnz@MkIQ{} -> writeChanS (SomeStanza (transform t stnz))
-    _                        -> pure ()
+    SomeStanza stnz@MkIQ{ iqPurpose = SIncoming } -> writeChanS $ SomeStanza $ transform t stnz
+    _                                             -> pure ()
     where
-      transform :: (Stanza 'IQ -> [CFilter Posn]) -> Stanza 'IQ -> Stanza 'IQ
-      transform t s@(MkIQ from' to' id' _type' _body') =
-          MkIQ to' from' id' Result (map (head . ($noelem)) $ t s)
+      transform :: (Stanza 'IQ 'Incoming -> [CFilter Posn]) -> Stanza 'IQ 'Incoming -> Stanza 'IQ 'Incoming
+      transform t s@(MkIQ from' to' id' _type' _body' SIncoming) =
+          MkIQ to' from' id' Result (map (head . ($noelem)) $ t s) SIncoming

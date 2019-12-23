@@ -12,11 +12,13 @@
 -- Ported from Text.HTML to HaXML combinatiors
 --
 -----------------------------------------------------------------------------
+
 module Network.XMPP.Print
   ( -- Top-level rendering functions
     renderXmpp
   , putXmppLn
   , hPutXmpp
+  , hPutNode
     -- XMPP primitives: tags
   , stream
   , streamEnd
@@ -25,11 +27,15 @@ module Network.XMPP.Print
   ) where
 
 import           System.IO
+import qualified Data.Text             as T
+import qualified Data.Text.Lazy        as TL
 import           Text.XML.HaXml        hiding (tag)
 import           Text.XML.HaXml.Types  (Content)
-import           Text.XML.HaXml.Posn   (Posn)
 import qualified Text.XML.HaXml.Pretty as P
-    
+import           Text.XML              (Node)
+import Text.Blaze.Renderer.Text        (renderMarkup)
+import Text.Blaze                      (toMarkup)
+import Text.XML.HaXml.Posn
 import Network.XMPP.UTF8
 import Network.XMPP.Utils
 
@@ -46,6 +52,12 @@ hPutXmpp h msg =
      debugIO $ "Sending: " ++ str
      hPutStr h $ toUTF8 str
 
+hPutNode :: Handle -> Node -> IO ()
+hPutNode h n = do
+  let str = T.unpack . TL.toStrict . renderMarkup . toMarkup $ n
+  debugIO $ "Sending: " ++ str
+  hPutStr h $ toUTF8 str
+
 -- | Render HaXML combinators into string, hacked for XMPP
 renderXmpp :: Content Posn -> String
 renderXmpp theXml =
@@ -60,16 +72,27 @@ renderXmpp theXml =
 --- XMPP construction combinators, based on the Text.Html
 ---
 
-stream :: (Show a) => a -> String -> CFilter i
+stream :: Show a => a -> String -> CFilter i
 stream typ server =
-    mkElemAttr "stream:stream"
-            [ strAttr "xmlns:stream" "http://etherx.jabber.org/streams"
-            , strAttr "xml:language" "en"
-            , strAttr "version" "1.0"
-            , strAttr "to" server
-            , strAttr "xmlns" (show typ)
-            ]
-            [ mkElemAttr "" [] []  ]
+  mkElemAttr "stream:stream"
+    [ strAttr "xmlns:stream" "http://etherx.jabber.org/streams"
+    , strAttr "xml:language" "en"
+    , strAttr "version" "1.0"
+    , strAttr "to" server
+    , strAttr "xmlns" (show typ)
+    ]
+    [ mkElemAttr "" [] []  ]
+-- TODO: to use hamlet here, we shoud be able to render non-closing tag like `<stream ...>`
+--       but hamlet autho close tags and i see no ways to control it
+-- head [xml|
+--   <stream:stream
+--     xmlns:stream="http://etherx.jabber.org/streams"
+--     xml:language="en"
+--     version="1.0"
+--     to=#{T.pack server}
+--     xmlns=#{T.pack (show typ)}
+--   />
+--
 
 streamEnd :: CFilter i
 streamEnd =

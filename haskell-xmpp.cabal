@@ -53,6 +53,7 @@ library
                , xml-conduit
                , text
                , blaze-markup
+               , singletons
 
   Exposed-modules: Network.XMPP
                  , Network.XMPP.Sasl
