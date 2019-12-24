@@ -1,15 +1,13 @@
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE StandaloneDeriving         #-}
-{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ExistentialQuantification  #-}
-{-# LANGUAGE PolyKinds                  #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE GADTs                      #-}
 
 
 -----------------------------------------------------------------------------
@@ -30,7 +28,7 @@ module Network.XMPP.Types
 , Stanza(..), StanzaType(..), SomeStanza(..)
 , MessageType(..), PresenceType(..), IQType(..), ShowType(..)
 , RosterItem(..)
-, JID(..), JIDQualification(..), SomeJID(..)
+, JID(..), JIDQualification(..), SomeJID(..), NodeID(..), ResourceID(..), DomainID(..)
 , StanzaPurpose(..)
 , Sing(..), IncomingSym0, OutgoingSym0, SStanzaPurpose
 )
