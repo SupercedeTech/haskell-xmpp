@@ -26,6 +26,7 @@ import Network.XMPP.Types
 import Network.XMPP.Stanza
 import Network.XMPP.Concurrent
 import Text.XML (Node)
+import qualified Data.Text as T
 
 import Text.XML.HaXml
 import Text.XML.HaXml.Posn
@@ -34,7 +35,7 @@ noelem :: Content Posn
 noelem = CElem (Elem (N "root") [] []) noPos
 
 -- | Send IQ of specified type with supplied data
-iqSend :: String -- ^ ID to use
+iqSend :: T.Text -- ^ ID to use
        -> IQType -- ^ IQ type
        -> [Node] -- ^ request contents 
        -> XmppMonad ()

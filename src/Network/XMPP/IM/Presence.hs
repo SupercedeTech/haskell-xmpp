@@ -1,4 +1,5 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -24,30 +25,31 @@ module Network.XMPP.IM.Presence
   ) where
 
 import Network.XMPP.Types
+import Data.Text           (Text)
 
 -- | Default presence, should be sent at first
-presAvailable :: String -- ^ Status message
+presAvailable :: Text -- ^ Status message
               -> Stanza 'Presence 'Outgoing
 presAvailable status = MkPresence Nothing Nothing "" Default Available status (Just 0) [] SOutgoing
 
 -- | Should be sent at last
-presUnavailable :: String -> Stanza 'Presence 'Outgoing
+presUnavailable :: Text -> Stanza 'Presence 'Outgoing
 presUnavailable = mkPresenceU Available
 
-presAway :: String -> Stanza 'Presence 'Outgoing
+presAway :: Text -> Stanza 'Presence 'Outgoing
 presAway = mkPresenceD Away
 
-presXa :: String -> Stanza 'Presence 'Outgoing
+presXa :: Text -> Stanza 'Presence 'Outgoing
 presXa = mkPresenceD XAway
 
-presChat :: String -> Stanza 'Presence 'Outgoing
+presChat :: Text -> Stanza 'Presence 'Outgoing
 presChat = mkPresenceD FreeChat
 
-presDND :: String -> Stanza 'Presence 'Outgoing
+presDND :: Text -> Stanza 'Presence 'Outgoing
 presDND = mkPresenceD DND
 
 -- | Helper to contruct presence Stanza with required attrs
-mkPresence :: PresenceType -> ShowType -> String -> Stanza 'Presence 'Outgoing
+mkPresence :: PresenceType -> ShowType -> Text -> Stanza 'Presence 'Outgoing
 mkPresence typ showType status = 
     MkPresence 
         { pFrom     = Nothing
@@ -61,8 +63,8 @@ mkPresence typ showType status =
         , pPurpose = SOutgoing
         }
 
-mkPresenceD :: ShowType -> String -> Stanza 'Presence 'Outgoing
+mkPresenceD :: ShowType -> Text -> Stanza 'Presence 'Outgoing
 mkPresenceD = mkPresence Default
 
-mkPresenceU :: ShowType -> String -> Stanza 'Presence 'Outgoing
+mkPresenceU :: ShowType -> Text -> Stanza 'Presence 'Outgoing
 mkPresenceU = mkPresence Unavailable
