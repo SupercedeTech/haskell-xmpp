@@ -19,6 +19,7 @@ module Network.XMPP.XEP.MUC
 ( enterRoomStanza, leaveRoomStanza, destroyRoomStanza
 , roomMessageStanza, privateMessageStanza
 , queryForAssociatedServicesStanza
+, UserJID, RoomJID, RoomMemberJID
 ) 
 where
 
