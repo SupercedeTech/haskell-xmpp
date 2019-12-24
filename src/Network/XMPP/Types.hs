@@ -179,6 +179,8 @@ instance Show (JID a) where
   show (ResourceJID (DomainID domain) (ResourceID resource)) =
     T.unpack $ domain <> "/" <> resource
   show (DomainJID (DomainID domain)) = T.unpack domain
+  show (NodeJID (NodeID node) (DomainID domain)) =
+    T.unpack $ node <> "@" <> domain
 
 instance ToMarkup (JID a) where
     toMarkup = toMarkup . show
