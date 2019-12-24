@@ -58,9 +58,7 @@ parse m | xtractp id "/message" m  = pure $ SomeStanza $ parseMessage m
 -- | Gets next message from stream and parses it
 -- | We shall skip over unknown messages, rather than crashing
 parseM :: XmppMonad SomeStanza
-parseM = parse <$> nextM >>= \case
-    Nothing -> parseM
-    Just v  -> pure v
+parseM = (parse <$> nextM) >>= maybe parseM pure
 
 parseMessage :: Content Posn -> Stanza 'Message 'Incoming
 parseMessage m = MkMessage

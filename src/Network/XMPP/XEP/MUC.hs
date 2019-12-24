@@ -45,11 +45,11 @@ queryForAssociatedServicesStanza from srv uuid =
     , iqPurpose = SOutgoing
     }
 
-enterRoomStanza :: JID 'NodeResource -> UUID.UUID -> Stanza 'Presence 'Outgoing
-enterRoomStanza jid uuid =
+enterRoomStanza :: UserJID -> UserJID -> UUID.UUID -> Stanza 'Presence 'Outgoing
+enterRoomStanza who to uuid =
   MkPresence
-    { pFrom     = Nothing
-    , pTo       = Just $ SomeJID jid
+    { pFrom     = Just $ SomeJID who
+    , pTo       = Just $ SomeJID to
     , pId       = UUID.toText uuid
     , pType     = Default
     , pShowType = Available

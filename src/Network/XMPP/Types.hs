@@ -147,6 +147,12 @@ instance Read (JID 'Domain) where
       [(SomeJID j@DomainJID{}, after)] -> [(j, after)]
       _ -> []
 
+instance Read (JID 'Node) where
+  readsPrec prev str =
+    case readsPrec prev str of
+      [(SomeJID j@NodeJID{}, after)] -> [(j, after)]
+      _ -> []
+
 instance Read SomeJID where
   -- Reads JID from string (name@server\/resource)
   readsPrec _ str = case matchRegexAll regex str of
@@ -157,13 +163,16 @@ instance Read SomeJID where
               domainId   = DomainID $ T.pack domain
               resourceId = ResourceID $ T.pack resource
           in  Just $ SomeJID $ NodeResourceJID nodeId domainId resourceId
+        (Just node, domain, Nothing) ->
+          let nodeId     = NodeID $ T.pack node
+              domainId   = DomainID $ T.pack domain
+          in Just $ SomeJID $ NodeJID nodeId domainId
         (Nothing, domain, Nothing) ->
           Just $ SomeJID $ DomainJID $ DomainID $ T.pack domain
         (Nothing, domain, Just resource) ->
           let domainId   = DomainID $ T.pack domain
               resourceId = ResourceID $ T.pack resource
           in  Just $ SomeJID $ ResourceJID domainId resourceId
-        _ -> Nothing
     _  -> []
     where
       toMaybe "" = Nothing
