@@ -1,4 +1,6 @@
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.XMPP.Sasl
@@ -33,21 +35,21 @@ import Network.XMPP.Stream
 import Network.XMPP.Types
 
 -- | Perform authentication over already-open channel
-saslAuth :: [String] -- ^ List of auth mechanism available from server, currently only "DIGEST-MD5" is supported
-         -> String   -- ^ Server we are connectint to (hostname)
-         -> String   -- ^ Username to connect as
-         -> String   -- ^ Password
+saslAuth :: [T.Text] -- ^ List of auth mechanism available from server, currently only "DIGEST-MD5" is supported
+         -> T.Text   -- ^ Server we are connectint to (hostname)
+         -> T.Text   -- ^ Username to connect as
+         -> T.Text   -- ^ Password
          -> XmppMonad ()
 saslAuth mechanisms server username password
   | "DIGEST-MD5" `elem` mechanisms = saslDigest server username password
   | otherwise                      = error $ "Dont know how to do auth! Available mechanisms are: " ++ show mechanisms
 
-saslDigest :: String -> String -> String -> XmppMonad ()
+saslDigest :: T.Text -> T.Text -> T.Text -> XmppMonad ()
 saslDigest server username password = do
     out $ head auth
     ch_text <- withNextM getChallenge
     resp <- liftIO $ saslDigestResponse ch_text username server password
-    out $ head $ response resp
+    out $ head $ response $ T.pack resp
     m <- nextM
     unless (null $ tag "failure" m) $ error "Auth failure" -- TODO Oo! ehrm, no!
     let chl_text = getChallenge m
@@ -59,7 +61,7 @@ saslDigest server username password = do
         auth = [xml|<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" mechanism="DIGEST-MD5">|]
         response resp = [xml|
           <response xmlns="urn:ietf:params:xml:ns:xmpp-sasl">
-            #{T.pack resp}
+            #{resp}
           |]
         sndResponse = [xml|<response xmlns="urn:ietf:params:xml:ns:xmpp-sasl">|]
         getChallenge c =
@@ -67,16 +69,16 @@ saslDigest server username password = do
                 [] -> error "Wheres challenge?"
                 x  -> getText_ x
 
-saslDigestResponse :: String -> String -> String -> String -> IO String
+saslDigestResponse :: T.Text -> T.Text -> T.Text -> T.Text -> IO String
 saslDigestResponse chl username server password =
-  let pairs = getPairs $ B64.decode chl
+  let pairs = getPairs $ B64.decode $ T.unpack chl
       Just qop = lookup "qop" pairs
       Just nonce = lookup "nonce" pairs
       nc = "00000001"
-      digest_uri ="xmpp/" ++ server
+      digest_uri = "xmpp/" ++ T.unpack server
       realm = server 
       in do cnonce <- make_cnonce
-            let a1 = semi_sep [ md5raw (Str (semi_sep [username,realm,password])), nonce, cnonce]
+            let a1 = semi_sep [ md5raw (Str (semi_sep $ map T.unpack [username, realm, password])), nonce, cnonce]
                 a2 = "AUTHENTICATE:" ++ digest_uri
                 t  = semi_sep [ md5s (Str a1), nonce, nc, cnonce, qop, md5s (Str a2) ]
                 response = md5s (Str t)
@@ -109,9 +111,9 @@ getPairs str =
                   x@('\"':_) -> read x
                   x          -> x
 
-saslDigestRspAuth :: String -> XmppMonad ()
+saslDigestRspAuth :: T.Text -> XmppMonad ()
 saslDigestRspAuth chl =
-  let pairs = getPairs $ B64.decode chl
+  let pairs = getPairs $ B64.decode $ T.unpack chl
       in case lookup "rspauth" pairs of
               Just _ -> return ()
               Nothing -> error "NO rspauth in SASL digest rspauth!"

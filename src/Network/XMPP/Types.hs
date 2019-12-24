@@ -50,10 +50,10 @@ import Data.Singletons.TH     (genSingletons, Sing(..))
 
 --------------------------------------------------------------------------------
 
-type Server   = String
-type Username = String
-type Password = String
-type Resource = String
+type Server   = T.Text
+type Username = T.Text
+type Password = T.Text
+type Resource = T.Text
 
 --------------------------------------------------------------------------------
 
@@ -116,16 +116,18 @@ data JIDQualification
 data SomeJID = forall (a :: JIDQualification). SomeJID (JID a)
 
 data JID :: JIDQualification -> * where
-  ResourceJID     :: { jrDomain :: DomainID      -- ^ Server adress
-                     , jrResource :: ResourceID  -- ^ Resource name
+  ResourceJID     :: { jrDomain :: DomainID
+                     , jrResource :: ResourceID
                      } -> JID 'Resource
 
   NodeResourceJID :: { jnrNode :: NodeID           -- ^ Account name
                      , jnrDomain :: DomainID       -- ^ Server adress
                      , jnrResource :: ResourceID   -- ^ Resource name
                      } -> JID 'NodeResource
-  NodeJID         :: { nrNode :: NodeID, nrDomain :: DomainID } -> JID 'Node
-  DomainJID       :: { jdDomain :: DomainID } -> JID 'Domain -- ^ Server adress
+  NodeJID         :: { nNode :: NodeID
+                     , nDomain :: DomainID
+                     } -> JID 'Node
+  DomainJID       :: { jdDomain :: DomainID } -> JID 'Domain
 
 instance Read (JID 'NodeResource) where
   readsPrec prev str =
@@ -145,6 +147,12 @@ instance Read (JID 'Domain) where
       [(SomeJID j@DomainJID{}, after)] -> [(j, after)]
       _ -> []
 
+instance Read (JID 'Node) where
+  readsPrec prev str =
+    case readsPrec prev str of
+      [(SomeJID j@NodeJID{}, after)] -> [(j, after)]
+      _ -> []
+
 instance Read SomeJID where
   -- Reads JID from string (name@server\/resource)
   readsPrec _ str = case matchRegexAll regex str of
@@ -155,13 +163,16 @@ instance Read SomeJID where
               domainId   = DomainID $ T.pack domain
               resourceId = ResourceID $ T.pack resource
           in  Just $ SomeJID $ NodeResourceJID nodeId domainId resourceId
+        (Just node, domain, Nothing) ->
+          let nodeId     = NodeID $ T.pack node
+              domainId   = DomainID $ T.pack domain
+          in Just $ SomeJID $ NodeJID nodeId domainId
         (Nothing, domain, Nothing) ->
           Just $ SomeJID $ DomainJID $ DomainID $ T.pack domain
         (Nothing, domain, Just resource) ->
           let domainId   = DomainID $ T.pack domain
               resourceId = ResourceID $ T.pack resource
           in  Just $ SomeJID $ ResourceJID domainId resourceId
-        _ -> Nothing
     _  -> []
     where
       toMaybe "" = Nothing
@@ -347,11 +358,11 @@ data Stanza :: StanzaType -> StanzaPurpose -> * where
     MkMessage ::
         { mFrom    :: Maybe (JID 'NodeResource)
         , mTo      :: SomeJID
-        , mId      :: String -- ^ Message 'from', 'to', 'id' attributes
-        , mType    :: MessageType -- ^ Message type (2.1.1)
-        , mSubject :: String -- ^ Subject element (2.1.2.1)
-        , mBody    :: String -- ^ Body element (2.1.2.2)
-        , mThread  :: String -- ^ Thread element (2.1.2.3)
+        , mId      :: T.Text          -- ^ Message 'from', 'to', 'id' attributes
+        , mType    :: MessageType     -- ^ Message type (2.1.1)
+        , mSubject :: T.Text          -- ^ Subject element (2.1.2.1)
+        , mBody    :: T.Text          -- ^ Body element (2.1.2.2)
+        , mThread  :: T.Text          -- ^ Thread element (2.1.2.3)
         , mExt     :: DataByPurpose p -- ^ Additional contents, used for extensions
         , mPurpose :: Sing p
         }
@@ -359,11 +370,11 @@ data Stanza :: StanzaType -> StanzaPurpose -> * where
     MkPresence ::
         { pFrom     :: Maybe SomeJID
         , pTo       :: Maybe SomeJID
-        , pId       :: String -- ^ Presence 'from', 'to', 'id' attributes
-        , pType     :: PresenceType -- ^ Presence type (2.2.1)
-        , pShowType :: ShowType -- ^ Show element (2.2.2.1)
-        , pStatus   :: String -- ^ Status element (2.2.2.2)
-        , pPriority :: Maybe Integer -- ^ Presence priority (2.2.2.3)
+        , pId       :: T.Text          -- ^ Presence 'from', 'to', 'id' attributes
+        , pType     :: PresenceType    -- ^ Presence type (2.2.1)
+        , pShowType :: ShowType        -- ^ Show element (2.2.2.1)
+        , pStatus   :: T.Text          -- ^ Status element (2.2.2.2)
+        , pPriority :: Maybe Integer   -- ^ Presence priority (2.2.2.3)
         , pExt      :: DataByPurpose p -- ^ Additional contents, used for extensions
         , pPurpose :: Sing p
         }
@@ -371,8 +382,8 @@ data Stanza :: StanzaType -> StanzaPurpose -> * where
     MkIQ ::
         { iqFrom  :: Maybe SomeJID
         , iqTo    :: Maybe SomeJID
-        , iqId    :: String -- ^ IQ id (Core-9.2.3)
-        , iqType  :: IQType -- ^ IQ type (Core-9.2.3)
+        , iqId    :: T.Text          -- ^ IQ id (Core-9.2.3)
+        , iqType  :: IQType          -- ^ IQ type (Core-9.2.3)
         , iqBody  :: DataByPurpose p -- ^ Child element (Core-9.2.3)
         , iqPurpose :: Sing p
         }

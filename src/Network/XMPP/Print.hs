@@ -72,13 +72,13 @@ renderXmpp theXml =
 --- XMPP construction combinators, based on the Text.Html
 ---
 
-stream :: Show a => a -> String -> CFilter i
+stream :: Show a => a -> T.Text -> CFilter i
 stream typ server =
   mkElemAttr "stream:stream"
     [ strAttr "xmlns:stream" "http://etherx.jabber.org/streams"
     , strAttr "xml:language" "en"
     , strAttr "version" "1.0"
-    , strAttr "to" server
+    , strAttr "to" $ T.unpack server
     , strAttr "xmlns" (show typ)
     ]
     [ mkElemAttr "" [] []  ]

@@ -1,5 +1,6 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE DataKinds         #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -23,10 +24,10 @@ import Control.Monad.State
 import System.IO
 
 import qualified Data.Text as T
-import Text.Hamlet.XML   (xml)
+import Text.Hamlet.XML      (xml)
 import Text.XML.HaXml.Types (Content(..), Element(..), QName(..))
-import Text.XML.HaXml.Posn (noPos, Posn)
-import Network.XMPP.Sasl (saslAuth)
+import Text.XML.HaXml.Posn  (noPos, Posn)
+import Network.XMPP.Sasl    (saslAuth)
 import Network.XMPP.Print
 import Network.XMPP.Stream
 import Network.XMPP.Types
@@ -56,7 +57,7 @@ initiateStream h server username password resrc =
      debug "Stream started"
      --debug $ "Observing: " ++ render (P.content m)
      m <- xtractM "/stream:features/mechanisms/mechanism/-"
-     let mechs = map getText m
+     let mechs = getText <$> m
      debug $ "Mechanisms: " ++ show mechs
 
      -- Handle the authentication
@@ -72,7 +73,7 @@ initiateStream h server username password resrc =
      iqSend "bind1" Set 
                   [xml|
                     <bind xmlns="urn:ietf:params:xml:ns:xmpp-bind">
-                      <resource>#{T.pack resrc}
+                      <resource>#{resrc}
                   |]
                 
      my_jid <- textractM "/iq[@type='result' & @id='bind1']/bind/jid/-"
@@ -82,7 +83,7 @@ initiateStream h server username password resrc =
 
      void $ xtractM "/iq[@type='result' & @id='session1']" -- (error "Session binding failed")
 
-     return (read my_jid)
+     return (read $ T.unpack my_jid)
 
 noelem :: Content Posn
 noelem = CElem (Elem (N "root") [] []) noPos

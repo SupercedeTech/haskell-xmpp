@@ -4,6 +4,7 @@
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE OverloadedStrings     #-}
 --These can disappear once we remove Content Posn versions
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -27,13 +28,16 @@
 
 module Network.XMPP.Stanza
 ( parse, parseM, parseMessage, parsePresence, parseIQ
-, outStanza
+, withUUID, outStanza
 , StanzaConverter(..)
 ) where
 
+import           Control.Monad.IO.Class      (MonadIO(..))
 import           Control.Applicative         (Alternative, empty, pure)
 import           Data.Maybe                  (mapMaybe)
-import           Data.Text                   (pack)
+import qualified Data.UUID.V4                as UUID
+import qualified Data.UUID                   as UUID
+import qualified Data.Text                   as T
 import           Text.Hamlet.XML             (xml)
 import           Text.XML                    (Node)
 import           Text.XML.HaXml              (Content)
@@ -54,16 +58,14 @@ parse m | xtractp id "/message" m  = pure $ SomeStanza $ parseMessage m
 -- | Gets next message from stream and parses it
 -- | We shall skip over unknown messages, rather than crashing
 parseM :: XmppMonad SomeStanza
-parseM = parse <$> nextM >>= \case
-    Nothing -> parseM
-    Just v  -> pure v
+parseM = (parse <$> nextM) >>= maybe parseM pure
 
 parseMessage :: Content Posn -> Stanza 'Message 'Incoming
 parseMessage m = MkMessage
-    { mFrom    = mread $ txt "/message/@from" m
-    , mTo      = read $ getText_ $ xtract id "/message/@to" m
+    { mFrom    = mread $ T.unpack $ txt "/message/@from" m
+    , mTo      = read $ T.unpack $ getText_ $ xtract id "/message/@to" m
     , mId      = getText_ $ xtract id "/message/@id" m
-    , mType    = read $ getText_ $ xtract id "/message/@type" m
+    , mType    = read $ T.unpack $ getText_ $ xtract id "/message/@type" m
     , mSubject = getText_ $ xtract id "/message/subject/-" m
     , mBody    = getText_ $ xtract id "/message/body/-" m
     , mThread  = getText_ $ xtract id "/message/thread/-" m
@@ -73,36 +75,39 @@ parseMessage m = MkMessage
 
 parsePresence :: Content Posn -> Stanza 'Presence 'Incoming
 parsePresence m = MkPresence
-    { pFrom     = mread $ txt "/presence/@from" m
-    , pTo       = mread $ txt "/presence/@to" m
+    { pFrom     = mread $ T.unpack $ txt "/presence/@from" m
+    , pTo       = mread $ T.unpack $ txt "/presence/@to" m
     , pId       = txt "/presence/@id" m
-    , pType     = read $ txt "/presence/@type" m
-    , pShowType = read $ txt "/presence/show/-" m
+    , pType     = read $ T.unpack $ txt "/presence/@type" m
+    , pShowType = read $ T.unpack $ txt "/presence/show/-" m
     , pStatus   = txt "/presence/status/-" m
-    , pPriority = mread $ txt "/presence/priority/-" m
+    , pPriority = mread $ T.unpack $ txt "/presence/priority/-" m
     , pExt      = xtract id "/presence/*" m
     , pPurpose = SIncoming
     }
 
 parseIQ :: Content Posn -> Stanza 'IQ 'Incoming
 parseIQ m = MkIQ
-    { iqFrom = mread $ txt "/iq/@from" m
-    , iqTo   = mread $ txt "/iq/@to" m
+    { iqFrom = mread $ T.unpack $ txt "/iq/@from" m
+    , iqTo   = mread $ T.unpack $ txt "/iq/@to" m
     , iqId   = txt "/iq/@id" m
-    , iqType = read $ txt "/iq/@type" m
+    , iqType = read $ T.unpack $ txt "/iq/@type" m
     , iqBody = [m]
     , iqPurpose = SIncoming
     }
 
 -- | Extract text from `Content Posn' with supplied pattern
-txt :: String      -- ^ xtract-like pattern to match
+txt :: T.Text      -- ^ xtract-like pattern to match
     -> Content Posn -- ^ message being processed
-    -> String      -- ^ result of extraction
-txt p m = getText_ $ xtract id p m
+    -> T.Text      -- ^ result of extraction
+txt p m = getText_ $ xtract id (T.unpack p) m
 
 -- | Converts stanza to XML and outputs it
 outStanza :: (StanzaConverter t Node) => Stanza t 'Outgoing -> XmppMonad ()
 outStanza = out . convert
+
+withUUID :: MonadIO m => (UUID.UUID -> Stanza t p) -> m (Stanza t p)
+withUUID setUUID = setUUID <$> liftIO UUID.nextRandom
 
 --------------------------------------------------------------------------------
 
@@ -114,54 +119,54 @@ class StanzaConverter t a where
 condToAlt :: Alternative m => (x -> Bool) -> x -> m x
 condToAlt f x = if f x then pure x else empty
 
-toAttrList :: Traversable t => [t (Maybe a)] -> [t a]
+toAttrList :: [(String, Maybe a)] -> [(String, a)]
 toAttrList = mapMaybe sequence
 
 instance StanzaConverter 'Message Node where
   convert MkMessage{..} = head [xml|
     <message *{messageAttrs} xml:lang=en>
       <body *{bodyAttrs}>
-        #{pack mBody}
+        #{mBody}
   |]
     where
       messageAttrs = toAttrList
         [ ("from", show <$> mFrom)
         , ("to", Just $ show mTo)
-        , ("id", Just mId)
+        , ("id", Just $ T.unpack mId)
         , ("type", Just $ show mType)
         ]
       bodyAttrs = toAttrList
-        [ ("subject", condToAlt (not . null) mSubject)
-        , ("thread", condToAlt (not . null) mThread)
+        [ ("subject", T.unpack <$> condToAlt (not . T.null) mSubject)
+        , ("thread", T.unpack <$> condToAlt (not . T.null) mThread)
         ]
 
 instance StanzaConverter 'Presence Node where
   convert MkPresence{ pPurpose = SOutgoing, ..} = head [xml|
-    <presence *{attrs} xml:lang=en>
+    <presence *{attrs} xml:lang="en">
       ^{pExt}
-  |]
+    |]
     where
       attrs = toAttrList
         [ ("from", show <$> pFrom)
         , ("to", show <$> pTo)
-        , ("id", condToAlt (not . null) pId)
-        , ("type", show <$> condToAlt (/=Default) pType)
-        , ("show", show <$> condToAlt (/=Available) pShowType)
-        , ("status", condToAlt (not . null) pStatus)
+        , ("id", T.unpack <$> condToAlt (not . T.null) pId)
+        , ("type", show <$> condToAlt (/= Default) pType)
+        , ("show", show <$> condToAlt (/= Available) pShowType)
+        , ("status", T.unpack <$> condToAlt (not . T.null) pStatus)
         , ("priority", show <$> pPriority)
         ]
   convert _ = head [xml|<error>Unsupported message for conversion|] -- TODO: define appropriate class instance
 
 instance StanzaConverter 'IQ Node where
   convert MkIQ{ iqPurpose = SOutgoing, ..} = head [xml|
-    <iq *{attrs} xml:lang=en>
+    <iq *{attrs} xml:lang="en">
       ^{iqBody}
   |]
     where
       attrs = toAttrList
         [ ("from", show <$> iqFrom)
         , ("to", show <$> iqTo)
-        , ("id", Just iqId)
+        , ("id", Just $ T.unpack iqId)
         , ("type", Just $ show iqType)
         ]
   convert _ = head [xml|<error>Unsupported message for conversion|] -- TODO: define appropriate class instance

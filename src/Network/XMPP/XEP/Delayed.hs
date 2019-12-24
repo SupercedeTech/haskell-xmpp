@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs              #-}
 {-# LANGUAGE DataKinds          #-}
+{-# LANGUAGE OverloadedStrings  #-}
 
 -----------------------------------------------------------------------------
 -- |

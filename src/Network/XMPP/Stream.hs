@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -22,22 +23,22 @@ module Network.XMPP.Stream
 )
 where
 
-import Control.Monad.State
-import System.IO
-import Text.ParserCombinators.Poly.State (onFail)
-import Text.XML           (Node)
-import Text.XML.HaXml.Lex (xmlLex)
-import Text.XML.HaXml.Parse
-import Text.XML.HaXml.Posn (Posn, noPos)
-import Text.XML.HaXml.Types
-import qualified Text.XML.HaXml.Pretty as P (content)
-import Text.XML.HaXml.Xtract.Parse (xtract)
+import           Control.Monad.State
+import           System.IO
+import           Data.Text                    (Text, unpack)
+import           Text.ParserCombinators.Poly.State (onFail)
+import           Text.XML                     (Node)
+import           Text.XML.HaXml.Lex           (xmlLex)
+import           Text.XML.HaXml.Parse
+import           Text.XML.HaXml.Posn          (Posn, noPos)
+import           Text.XML.HaXml.Types
+import qualified Text.XML.HaXml.Pretty        as P (content)
+import           Text.XML.HaXml.Xtract.Parse  (xtract)
 
-import Network.XMPP.Print (hPutNode, hPutXmpp)
-import Network.XMPP.Utils
-import Network.XMPP.Types
-import Network.XMPP.UTF8
-
+import           Network.XMPP.Print           (hPutNode, hPutXmpp)
+import           Network.XMPP.Utils
+import           Network.XMPP.Types
+import           Network.XMPP.UTF8
 
 -- Main 'workhorses' for Stream are 'out', 'nextM', 'peekM' and 'selectM':
 -- | Sends message into Stream
@@ -72,12 +73,12 @@ selectM p =
             else error "Failed to select message"
 
 -- | Pass in xtract query, return query result from the first message where it returns non-empty results
-xtractM :: String ->  XmppMonad [Content Posn]
+xtractM :: Text -> XmppMonad [Content Posn]
 xtractM q = 
-  do m <- selectM (not . null . xtract id q)
-     return $ xtract id q m
+  do m <- selectM (not . null . xtract id (unpack q))
+     return $ xtract id (unpack q) m
 
-textractM :: String -> XmppMonad String
+textractM :: Text -> XmppMonad Text
 textractM q =  do res <- xtractM q
                   return $ case res of
                                 [] -> ""
