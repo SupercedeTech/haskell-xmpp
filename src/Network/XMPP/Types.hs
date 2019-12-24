@@ -112,6 +112,7 @@ data JIDResource = JIDResource DomainID ResourceID
 data JIDQualification
   = Resource
   | NodeResource
+  | Node
   | Domain
 
 data SomeJID = forall (a :: JIDQualification). SomeJID (JID a)
@@ -125,7 +126,7 @@ data JID :: JIDQualification -> * where
                      , jnrDomain :: DomainID       -- ^ Server adress
                      , jnrResource :: ResourceID   -- ^ Resource name
                      } -> JID 'NodeResource
-
+  NodeJID         :: { nrNode :: NodeID, nrDomain :: DomainID } -> JID 'Node
   DomainJID       :: { jdDomain :: DomainID } -> JID 'Domain -- ^ Server adress
 
 instance Read (JID 'NodeResource) where
