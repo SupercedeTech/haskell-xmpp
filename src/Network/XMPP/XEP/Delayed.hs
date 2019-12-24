@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs              #-}
+{-# LANGUAGE DataKinds          #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -24,7 +25,7 @@ import Network.XMPP.Types
 import Text.XML.HaXml.Xtract.Parse (xtract)
 
 -- | True, if stanza is delivered delayed
-isDelayed :: Stanza a -> Bool
-isDelayed (MkMessage _ _ _ _ _ _ _ ext) =
-    any (== "jabber:x:delay") $ map (\x -> getText_ $ xtract id "/x/@xmlns" x) ext
+isDelayed :: Stanza a 'Incoming -> Bool
+isDelayed (MkMessage _ _ _ _ _ _ _ ext _) =
+    any (== "jabber:x:delay") $ map (getText_ . xtract id "/x/@xmlns") ext
 isDelayed _ = False

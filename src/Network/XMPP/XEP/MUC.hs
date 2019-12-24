@@ -21,11 +21,8 @@ where
 
 import Data.UUID           (UUID, toString)
 
-import Text.XML.HaXml              (Element(Elem), mkElemAttr, Content (CElem),
-                                    QName(N))
-import Text.XML.HaXml.Posn         (Posn, noPos)
+import Text.Hamlet.XML     (xml)
 import Network.XMPP.Types
-import Network.XMPP.Utils
 
 
 -- | https://xmpp.org/extensions/xep-0045.html#disco-service
@@ -42,10 +39,8 @@ queryForAssociatedServices jid srv uuid =
                    |]
         }
         -}
-noelem :: Content Posn
-noelem = CElem (Elem (N "root") [] []) noPos
 
-enterRoom :: JID 'NodeResource -> UUID -> Stanza 'Presence
+enterRoom :: JID 'NodeResource -> UUID -> Stanza 'Presence 'Outgoing
 enterRoom jid uuid =
     MkPresence
         { pFrom     = Nothing
@@ -55,17 +50,11 @@ enterRoom jid uuid =
         , pShowType = Available
         , pStatus   = ""
         , pPriority = Nothing
---        , pExt      = [xml|
---                        <x xmlns='http://jabber.org/protocol/muc'/>
---                      |]
-        , pExt   = [ head $ ($noelem) $
-                       mkElemAttr "x"
-                        [ strAttr "xmlns" "http://jabber.org/protocol/muc" ]
-                        []
-                   ]
+        , pExt   = [xml|<x xmlns="http://jabber.org/protocol/muc">|]
+        , pPurpose = SOutgoing
         }
 
-leaveRoom :: JID 'NodeResource -> UUID -> Stanza 'Presence
+leaveRoom :: JID 'NodeResource -> UUID -> Stanza 'Presence 'Outgoing
 leaveRoom jid uuid =
     MkPresence
         { pFrom     = Nothing
@@ -75,21 +64,19 @@ leaveRoom jid uuid =
         , pShowType = Available
         , pStatus   = ""
         , pPriority = Nothing
-        , pExt      = []
+        , pExt   = []
+        , pPurpose = SOutgoing
         }
 
-destroyRoom :: JID 'NodeResource -> JID 'Resource -> UUID -> Stanza 'IQ
+destroyRoom :: JID 'NodeResource -> JID 'Resource -> UUID -> Stanza 'IQ 'Outgoing
 destroyRoom from to uuid =
     MkIQ
         { iqFrom = Just $ SomeJID from
         , iqTo   = Just $ SomeJID to
         , iqId   = toString uuid
         , iqType = Set
-        , iqBody = [ head $ ($noelem) $
-                       mkElemAttr "query"
-                        [ strAttr "xmlns" "http://jabber.org/protocol/muc#owner" ]
-                        []
-                   ]
+        , iqBody = [xml| <query xmlns="http://jabber.org/protocol/muc#owner"> |]
+        , iqPurpose = SOutgoing
         }
 
   -- <query xmlns='http://jabber.org/protocol/muc#owner'>

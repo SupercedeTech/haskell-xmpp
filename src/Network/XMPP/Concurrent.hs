@@ -59,9 +59,9 @@ runThreaded a = do
           loop $ do
             st <- liftIO $ atomically $ readTChan out'
             case st of
-                SomeStanza stnz@MkMessage{}  -> outStanza stnz
-                SomeStanza stnz@MkPresence{} -> outStanza stnz
-                SomeStanza stnz@MkIQ{}       -> outStanza stnz
+                SomeStanza stnz@MkMessage{ mPurpose = SOutgoing }  -> outStanza stnz
+                SomeStanza stnz@MkPresence{ pPurpose = SOutgoing } -> outStanza stnz
+                SomeStanza stnz@MkIQ{ iqPurpose = SOutgoing }      -> outStanza stnz
                 _                            -> pure () -- Won't happen, but we gotta make compiler happy
       loop = sequence_ . repeat
        

@@ -36,9 +36,8 @@ import           Data.Maybe                  (mapMaybe)
 import           Data.Text                   (pack)
 import           Text.Hamlet.XML             (xml)
 import           Text.XML                    (Node)
-import           Text.XML.HaXml              (Content (CElem), Element (Elem),
-                                              QName (N), mkElemAttr)
-import           Text.XML.HaXml.Posn         (Posn, noPos)
+import           Text.XML.HaXml              (Content)
+import           Text.XML.HaXml.Posn         (Posn)
 import           Text.XML.HaXml.Xtract.Parse (xtract)
 import           Network.XMPP.Stream
 import           Network.XMPP.Types
@@ -59,7 +58,7 @@ parseM = parse <$> nextM >>= \case
     Nothing -> parseM
     Just v  -> pure v
 
-parseMessage :: Content Posn -> Stanza 'Message
+parseMessage :: Content Posn -> Stanza 'Message 'Incoming
 parseMessage m = MkMessage
     { mFrom    = mread $ txt "/message/@from" m
     , mTo      = read $ getText_ $ xtract id "/message/@to" m
@@ -69,9 +68,10 @@ parseMessage m = MkMessage
     , mBody    = getText_ $ xtract id "/message/body/-" m
     , mThread  = getText_ $ xtract id "/message/thread/-" m
     , mExt     = xtract id "/message/*" m
+    , mPurpose = SIncoming
     }
 
-parsePresence :: Content Posn -> Stanza 'Presence
+parsePresence :: Content Posn -> Stanza 'Presence 'Incoming
 parsePresence m = MkPresence
     { pFrom     = mread $ txt "/presence/@from" m
     , pTo       = mread $ txt "/presence/@to" m
@@ -81,15 +81,17 @@ parsePresence m = MkPresence
     , pStatus   = txt "/presence/status/-" m
     , pPriority = mread $ txt "/presence/priority/-" m
     , pExt      = xtract id "/presence/*" m
+    , pPurpose = SIncoming
     }
 
-parseIQ :: Content Posn -> Stanza 'IQ
+parseIQ :: Content Posn -> Stanza 'IQ 'Incoming
 parseIQ m = MkIQ
     { iqFrom = mread $ txt "/iq/@from" m
     , iqTo   = mread $ txt "/iq/@to" m
     , iqId   = txt "/iq/@id" m
     , iqType = read $ txt "/iq/@type" m
     , iqBody = [m]
+    , iqPurpose = SIncoming
     }
 
 -- | Extract text from `Content Posn' with supplied pattern
@@ -99,59 +101,13 @@ txt :: String      -- ^ xtract-like pattern to match
 txt p m = getText_ $ xtract id p m
 
 -- | Converts stanza to XML and outputs it
-outStanza :: (StanzaConverter t (Content Posn)) => Stanza t -> XmppMonad ()
+outStanza :: (StanzaConverter t Node) => Stanza t 'Outgoing -> XmppMonad ()
 outStanza = out . convert
 
 --------------------------------------------------------------------------------
 
 class StanzaConverter t a where
-    convert :: Stanza t -> a
-
-noelem :: Content Posn
-noelem = CElem (Elem (N "root") [] []) noPos
-
-instance StanzaConverter 'Message (Content Posn) where
-  convert MkMessage {..} =
-    head $ ($ noelem)
-        $ mkElemAttr
-            "message"
-            (  mattr "from" mFrom
-            ++ [ strAttr "to"       (show mTo)
-               , strAttr "id"       mId
-               , strAttr "type"     (show mType)
-               , strAttr "xml:lang" "en"
-               ]
-            )
-        $ mkElemAttr "body" [] [literal mBody]
-        :  [mkElemAttr "subject" [] [literal mSubject] | mSubject /= ""]
-        ++ [mkElemAttr "thread" [] [literal mThread] | mThread /= ""]
-        ++ map (const . (: [])) mExt
-
-instance StanzaConverter 'Presence (Content Posn) where
-    convert MkPresence{..} = head $ ($noelem) $
-        mkElemAttr "presence"
-            (  mattr "from" pFrom
-            ++ mattr "to" pTo
-            ++ [strAttr "id" pId | pId /= ""]
-            ++ [strAttr "type" (show pType) | pType /= Default]
-            ++ [strAttr "xml:lang" "en" ]
-            ) $
-               [mkElemAttr "show" [] [literal $ show pShowType] | pShowType /= Available]
-            ++ [mkElemAttr "status" [] [literal pStatus] | pStatus /= ""]
-            ++ case pPriority of
-                    Just priority ->[ mkElemAttr "priority" [] [ literal $ show priority ]]
-                    Nothing -> []
-            ++ map (const . (: [])) pExt
-
-instance StanzaConverter 'IQ (Content Posn) where
-    convert MkIQ{..} = head $ ($noelem) $
-        mkElemAttr "iq"
-             (mattr "from" iqFrom
-             ++ mattr "to" iqTo
-             ++ [ strAttr "id" iqId
-                , strAttr "type" $ show iqType
-                , strAttr "xml:lang" "en" ])
-             $ map (const . (: [])) iqBody
+    convert :: Stanza t p -> a
 
 --------------------------------------------------------------------------------
 
@@ -180,8 +136,9 @@ instance StanzaConverter 'Message Node where
         ]
 
 instance StanzaConverter 'Presence Node where
-  convert MkPresence{..} = head [xml|
+  convert MkPresence{ pPurpose = SOutgoing, ..} = head [xml|
     <presence *{attrs} xml:lang=en>
+      ^{pExt}
   |]
     where
       attrs = toAttrList
@@ -193,15 +150,18 @@ instance StanzaConverter 'Presence Node where
         , ("status", condToAlt (not . null) pStatus)
         , ("priority", show <$> pPriority)
         ]
+  convert _ = head [xml|<error>Unsupported message for conversion|] -- TODO: define appropriate class instance
 
 instance StanzaConverter 'IQ Node where
-  convert MkIQ{..} = head [xml|
+  convert MkIQ{ iqPurpose = SOutgoing, ..} = head [xml|
     <iq *{attrs} xml:lang=en>
+      ^{iqBody}
   |]
     where
       attrs = toAttrList
         [ ("from", show <$> iqFrom)
         , ("to", show <$> iqTo)
-        , ("id", Just $ show iqId)
+        , ("id", Just iqId)
         , ("type", Just $ show iqType)
         ]
+  convert _ = head [xml|<error>Unsupported message for conversion|] -- TODO: define appropriate class instance
