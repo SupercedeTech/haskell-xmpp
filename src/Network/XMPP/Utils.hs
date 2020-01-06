@@ -19,6 +19,9 @@ module Network.XMPP.Utils
   , isVal
   , getText
   , getText_
+  , txtpat
+  , xtractp
+  , matchPatterns
   , mread
   , mattr
   , mattr'
@@ -63,7 +66,19 @@ getText x               = error $ "Attempt to extract text from content that is 
 
 getText_ :: [Content i] -> Text
 getText_ = pack . render . hcat . map P.content
-           
+
+-- | Extract text from `Content Posn' with supplied pattern
+txtpat :: Text      -- ^ xtract-like pattern to match
+    -> Content Posn -- ^ message being processed
+    -> Text         -- ^ result of extraction
+txtpat p m = getText_ $ xtract id (unpack p) m
+
+xtractp :: (Text -> Text) -> Text -> Content i -> Bool
+xtractp f p m = not . null $ xtract (unpack . f . pack) (unpack p) m
+
+matchPatterns :: Content i -> [Text] -> Bool
+matchPatterns m = all $ flip (xtractp id) m
+
 mread :: Read a => String -> Maybe a
 mread "" = Nothing
 mread a = Just $ read a
