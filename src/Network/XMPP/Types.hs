@@ -31,6 +31,7 @@ module Network.XMPP.Types
 , JID(..), JIDQualification(..), SomeJID(..), NodeID(..), ResourceID(..), DomainID(..)
 , StanzaPurpose(..)
 , Sing(..), IncomingSym0, OutgoingSym0, SStanzaPurpose
+, FromXML(..), ToXML(..)
 )
 where
 
@@ -356,7 +357,7 @@ type family DataByPurpose (p :: StanzaPurpose) where
 
 data Stanza :: StanzaType -> StanzaPurpose -> * where
     MkMessage ::
-        { mFrom    :: Maybe (JID 'NodeResource)
+        { mFrom    :: Maybe SomeJID
         , mTo      :: SomeJID
         , mId      :: T.Text          -- ^ Message 'from', 'to', 'id' attributes
         , mType    :: MessageType     -- ^ Message type (2.1.1)
@@ -397,3 +398,9 @@ instance Show (Sing 'Outgoing) where
 
 deriving instance Show (Stanza t 'Incoming)
 deriving instance Show (Stanza t 'Outgoing)
+
+class FromXML a where
+  decodeXml :: Content Posn -> Maybe a
+
+class ToXML a where
+  encodeXml :: a -> [Node]
