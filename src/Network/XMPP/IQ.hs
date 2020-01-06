@@ -1,6 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DataKinds  #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE GADTs      #-}
 
 -----------------------------------------------------------------------------
@@ -42,9 +41,9 @@ iqSend :: T.Text -- ^ ID to use
 iqSend id t body = outStanza $ MkIQ Nothing Nothing id t body SOutgoing
 
 -- Extract IQ reply that matches the supplied predicate from the event stream and send it (transformed)        
-iqReplyTo :: (Stanza 'IQ 'Incoming -> Bool) -- ^ Predicate used to match required IQ reply
-          -> (Stanza 'IQ 'Incoming -> [CFilter Posn]) -- ^ transformer function
-          -> XmppThreadT ()
+iqReplyTo :: (Stanza 'IQ 'Incoming e -> Bool) -- ^ Predicate used to match required IQ reply
+          -> (Stanza 'IQ 'Incoming e -> [CFilter Posn]) -- ^ transformer function
+          -> XmppThreadT () e
 iqReplyTo p t = do
   s <- waitFor (\case
             SomeStanza xiq@MkIQ{ iqPurpose = SIncoming } -> p xiq
@@ -53,6 +52,6 @@ iqReplyTo p t = do
     SomeStanza stnz@MkIQ{ iqPurpose = SIncoming } -> writeChanS $ SomeStanza $ transform t stnz
     _                                             -> pure ()
     where
-      transform :: (Stanza 'IQ 'Incoming -> [CFilter Posn]) -> Stanza 'IQ 'Incoming -> Stanza 'IQ 'Incoming
+      transform :: (Stanza 'IQ 'Incoming e -> [CFilter Posn]) -> Stanza 'IQ 'Incoming e -> Stanza 'IQ 'Incoming e
       transform t s@(MkIQ from' to' id' _type' _body' SIncoming) =
-          MkIQ to' from' id' Result (map (head . ($noelem)) $ t s) SIncoming
+          MkIQ to' from' id' Result (Left $ map (head . ($noelem)) $ t s) SIncoming

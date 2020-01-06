@@ -26,12 +26,12 @@ import Network.XMPP.Utils
 import Text.XML.HaXml
     
 -- | True, if stanza is a version request
-isVersionReq :: Stanza 'IQ 'Incoming -> Bool
+isVersionReq :: Stanza 'IQ 'Incoming () -> Bool
 isVersionReq MkIQ { iqBody = ext } =
-    isVal "jabber:iq:version" "/iq/query/@xmlns" ext
+    either (isVal "jabber:iq:version" "/iq/query/@xmlns") (const False) ext
 
 -- | Replies to version request
-versionAnswer :: String -> String -> String -> Stanza 'IQ 'Outgoing -> [CFilter i]
+versionAnswer :: String -> String -> String -> Stanza 'IQ 'Outgoing () -> [CFilter i]
 versionAnswer name version os MkIQ { } =
     [ mkElemAttr "query"
        [ strAttr "xmlns" "jabber:iq:version" ]
