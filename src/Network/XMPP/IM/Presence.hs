@@ -29,27 +29,27 @@ import Data.Text           (Text)
 
 -- | Default presence, should be sent at first
 presAvailable :: Text -- ^ Status message
-              -> Stanza 'Presence 'Outgoing
+              -> Stanza 'Presence 'Outgoing ()
 presAvailable status = MkPresence Nothing Nothing "" Default Available status (Just 0) [] SOutgoing
 
 -- | Should be sent at last
-presUnavailable :: Text -> Stanza 'Presence 'Outgoing
+presUnavailable :: Text -> Stanza 'Presence 'Outgoing ()
 presUnavailable = mkPresenceU Available
 
-presAway :: Text -> Stanza 'Presence 'Outgoing
+presAway :: Text -> Stanza 'Presence 'Outgoing ()
 presAway = mkPresenceD Away
 
-presXa :: Text -> Stanza 'Presence 'Outgoing
+presXa :: Text -> Stanza 'Presence 'Outgoing ()
 presXa = mkPresenceD XAway
 
-presChat :: Text -> Stanza 'Presence 'Outgoing
+presChat :: Text -> Stanza 'Presence 'Outgoing ()
 presChat = mkPresenceD FreeChat
 
-presDND :: Text -> Stanza 'Presence 'Outgoing
+presDND :: Text -> Stanza 'Presence 'Outgoing ()
 presDND = mkPresenceD DND
 
--- | Helper to contruct presence Stanza with required attrs
-mkPresence :: PresenceType -> ShowType -> Text -> Stanza 'Presence 'Outgoing
+-- | Helper to construct presence Stanza with required attrs
+mkPresence :: PresenceType -> ShowType -> Text -> Stanza 'Presence 'Outgoing ()
 mkPresence typ showType status = 
     MkPresence 
         { pFrom     = Nothing
@@ -63,8 +63,8 @@ mkPresence typ showType status =
         , pPurpose = SOutgoing
         }
 
-mkPresenceD :: ShowType -> Text -> Stanza 'Presence 'Outgoing
+mkPresenceD :: ShowType -> Text -> Stanza 'Presence 'Outgoing ()
 mkPresenceD = mkPresence Default
 
-mkPresenceU :: ShowType -> Text -> Stanza 'Presence 'Outgoing
+mkPresenceU :: ShowType -> Text -> Stanza 'Presence 'Outgoing ()
 mkPresenceU = mkPresence Unavailable

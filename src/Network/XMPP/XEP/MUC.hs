@@ -38,7 +38,7 @@ type RoomJID = JID 'Node               -- for example - programmers@localhost
 type RoomMemberJID = JID 'NodeResource -- for example - programmers@localhost/NikitaRzm
 
 -- | https://xmpp.org/extensions/xep-0045.html#disco-service
-queryForAssociatedServicesStanza :: JID 'NodeResource -> Server -> UUID.UUID -> Stanza 'IQ 'Outgoing
+queryForAssociatedServicesStanza :: JID 'NodeResource -> Server -> UUID.UUID -> Stanza 'IQ 'Outgoing MUCPayload
 queryForAssociatedServicesStanza from srv uuid =
   MkIQ
     { iqFrom = Just $ SomeJID from
@@ -49,7 +49,7 @@ queryForAssociatedServicesStanza from srv uuid =
     , iqPurpose = SOutgoing
     }
 
-createRoomStanza :: UserJID -> UserJID -> UUID.UUID -> Stanza 'Presence 'Outgoing
+createRoomStanza :: UserJID -> UserJID -> UUID.UUID -> Stanza 'Presence 'Outgoing MUCPayload
 createRoomStanza who to uuid =
   MkPresence
     { pFrom     = Just $ SomeJID who
@@ -63,7 +63,7 @@ createRoomStanza who to uuid =
     , pPurpose = SOutgoing
     }
 
-leaveRoomStanza :: JID 'NodeResource -> UUID.UUID -> Stanza 'Presence 'Outgoing
+leaveRoomStanza :: JID 'NodeResource -> UUID.UUID -> Stanza 'Presence 'Outgoing MUCPayload
 leaveRoomStanza jid uuid =
   MkPresence
     { pFrom     = Nothing
@@ -77,7 +77,7 @@ leaveRoomStanza jid uuid =
     , pPurpose = SOutgoing
     }
 
-destroyRoomStanza :: UserJID -> RoomJID -> T.Text -> UUID.UUID -> Stanza 'IQ 'Outgoing
+destroyRoomStanza :: UserJID -> RoomJID -> T.Text -> UUID.UUID -> Stanza 'IQ 'Outgoing ()
 destroyRoomStanza owner room reason uuid =
   MkIQ
     { iqFrom = Just $ SomeJID owner
@@ -97,7 +97,7 @@ privateMessageStanza
   -> RoomMemberJID
   -> T.Text
   -> UUID.UUID
-  -> Stanza 'Message 'Outgoing
+  -> Stanza 'Message 'Outgoing ()
 privateMessageStanza from to msg uuid = 
   MkMessage
     { mFrom    = Just $ SomeJID from
@@ -116,7 +116,7 @@ roomMessageStanza
   -> RoomJID
   -> T.Text
   -> UUID.UUID
-  -> Stanza 'Message 'Outgoing
+  -> Stanza 'Message 'Outgoing ()
 roomMessageStanza from to msg uuid =
   MkMessage
     { mFrom    = Just $ SomeJID from
@@ -130,7 +130,7 @@ roomMessageStanza from to msg uuid =
     , mPurpose = SOutgoing
     }
 
-queryInstantRoomConfigStanza :: UserJID -> RoomJID -> UUID.UUID -> Stanza 'IQ 'Outgoing
+queryInstantRoomConfigStanza :: UserJID -> RoomJID -> UUID.UUID -> Stanza 'IQ 'Outgoing ()
 queryInstantRoomConfigStanza owner room uuid = 
   MkIQ
     { iqFrom = Just $ SomeJID owner
@@ -141,7 +141,7 @@ queryInstantRoomConfigStanza owner room uuid =
     , iqPurpose = SOutgoing
     }
 
-submitInstantRoomConfigStanza :: UserJID -> RoomJID -> XmppForm -> UUID.UUID -> Stanza 'IQ 'Outgoing
+submitInstantRoomConfigStanza :: UserJID -> RoomJID -> XmppForm -> UUID.UUID -> Stanza 'IQ 'Outgoing ()
 submitInstantRoomConfigStanza owner room form uuid =
   MkIQ
     { iqFrom = Just $ SomeJID owner

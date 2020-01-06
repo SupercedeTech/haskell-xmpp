@@ -33,15 +33,15 @@ import Network.XMPP.Utils
 
 import System.IO
 
-data Thread = Thread { inCh :: TChan SomeStanza
-                     , outCh :: TChan SomeStanza
+data Thread e = Thread { inCh :: TChan (SomeStanza e)
+                     , outCh :: TChan (SomeStanza e)
                      }
 
-type XmppThreadT a = ReaderT Thread IO a
-       
+type XmppThreadT a e = ReaderT (Thread e) IO a
+
 -- Two streams: input and output. Threads read from input stream and write to output stream.
 -- | Runs thread in XmppState monad
-runThreaded :: XmppThreadT () -> XmppMonad ()
+runThreaded :: FromXML e => XmppThreadT () e -> XmppMonad ()
 runThreaded a = do
   in' <- liftIO $ atomically newTChan
   out' <- liftIO $ atomically newTChan
@@ -65,25 +65,25 @@ runThreaded a = do
                 _                            -> pure () -- Won't happen, but we gotta make compiler happy
       loop = sequence_ . repeat
        
-readChanS :: XmppThreadT SomeStanza
+readChanS :: XmppThreadT (SomeStanza e) e
 readChanS =
   asks inCh >>= liftIO . atomically . readTChan
 
-writeChanS :: SomeStanza -> XmppThreadT ()
+writeChanS :: SomeStanza e -> XmppThreadT () e
 writeChanS a = 
   void $ asks outCh >>= liftIO . atomically . flip writeTChan a 
 
 -- | Runs specified action in parallel
-withNewThread :: XmppThreadT () -> XmppThreadT ThreadId
+withNewThread :: XmppThreadT () e -> XmppThreadT ThreadId e
 withNewThread a = do
   newin <- asks inCh >>= liftIO . atomically . dupTChan
   asks outCh >>= liftIO . forkIO . runReaderT a . Thread newin
 
 -- | Turns action into infinite loop
-loop :: XmppThreadT () -> XmppThreadT ()
+loop :: XmppThreadT () e -> XmppThreadT () e
 loop a = a >> loop a
 
-waitFor :: (SomeStanza -> Bool) -> XmppThreadT SomeStanza
+waitFor :: (SomeStanza e -> Bool) -> XmppThreadT (SomeStanza e) e
 waitFor f = do
   s <- readChanS
   if f s then return s else waitFor f

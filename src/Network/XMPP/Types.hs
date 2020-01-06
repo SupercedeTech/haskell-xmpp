@@ -343,19 +343,18 @@ data StanzaPurpose = Incoming | Outgoing
 
 $(genSingletons [''StanzaPurpose])
 
-data SomeStanza = forall (a :: StanzaType) p. SomeStanza (Stanza a p)
+data SomeStanza e = forall (a :: StanzaType) (p :: StanzaPurpose). SomeStanza (Stanza a p e)
 
 data StanzaType
     = Message
     | Presence
     | IQ
 
+type family DataByPurpose (p :: StanzaPurpose) body where
+  DataByPurpose 'Incoming body = Either [Content Posn] body
+  DataByPurpose 'Outgoing body = [Node]
 
-type family DataByPurpose (p :: StanzaPurpose) where
-  DataByPurpose 'Incoming = [Content Posn]
-  DataByPurpose 'Outgoing = [Node]
-
-data Stanza :: StanzaType -> StanzaPurpose -> * where
+data Stanza :: StanzaType -> StanzaPurpose -> * -> * where
     MkMessage ::
         { mFrom    :: Maybe SomeJID
         , mTo      :: SomeJID
@@ -364,10 +363,10 @@ data Stanza :: StanzaType -> StanzaPurpose -> * where
         , mSubject :: T.Text          -- ^ Subject element (2.1.2.1)
         , mBody    :: T.Text          -- ^ Body element (2.1.2.2)
         , mThread  :: T.Text          -- ^ Thread element (2.1.2.3)
-        , mExt     :: DataByPurpose p -- ^ Additional contents, used for extensions
+        , mExt     :: DataByPurpose p ext -- ^ Additional contents, used for extensions
         , mPurpose :: Sing p
         }
-        -> Stanza 'Message p
+        -> Stanza 'Message p ext
     MkPresence ::
         { pFrom     :: Maybe SomeJID
         , pTo       :: Maybe SomeJID
@@ -376,19 +375,19 @@ data Stanza :: StanzaType -> StanzaPurpose -> * where
         , pShowType :: ShowType        -- ^ Show element (2.2.2.1)
         , pStatus   :: T.Text          -- ^ Status element (2.2.2.2)
         , pPriority :: Maybe Integer   -- ^ Presence priority (2.2.2.3)
-        , pExt      :: DataByPurpose p -- ^ Additional contents, used for extensions
+        , pExt      :: DataByPurpose p ext -- ^ Additional contents, used for extensions
         , pPurpose :: Sing p
         }
-        -> Stanza 'Presence p
+        -> Stanza 'Presence p ext
     MkIQ ::
         { iqFrom  :: Maybe SomeJID
         , iqTo    :: Maybe SomeJID
         , iqId    :: T.Text          -- ^ IQ id (Core-9.2.3)
         , iqType  :: IQType          -- ^ IQ type (Core-9.2.3)
-        , iqBody  :: DataByPurpose p -- ^ Child element (Core-9.2.3)
+        , iqBody  :: DataByPurpose p ext -- ^ Child element (Core-9.2.3)
         , iqPurpose :: Sing p
         }
-        -> Stanza 'IQ p
+        -> Stanza 'IQ p ext
 
 instance Show (Sing 'Incoming) where
   show _ = "incoming"
@@ -396,8 +395,8 @@ instance Show (Sing 'Incoming) where
 instance Show (Sing 'Outgoing) where
   show _ = "outgoing"
 
-deriving instance Show (Stanza t 'Incoming)
-deriving instance Show (Stanza t 'Outgoing)
+deriving instance (Show ext) => Show (Stanza t 'Incoming ext)
+deriving instance (Show ext) => Show (Stanza t 'Outgoing ext)
 
 class FromXML a where
   decodeXml :: Content Posn -> Maybe a
