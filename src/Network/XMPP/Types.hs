@@ -32,6 +32,7 @@ module Network.XMPP.Types
 , StanzaPurpose(..)
 , Sing(..), IncomingSym0, OutgoingSym0, SStanzaPurpose
 , FromXML(..), ToXML(..)
+, toBareJID
 )
 where
 
@@ -130,6 +131,9 @@ data JID :: JIDQualification -> * where
                      } -> JID 'Node
   DomainJID       :: { jdDomain :: DomainID } -> JID 'Domain
 
+toBareJID :: JID 'NodeResource -> JID 'Node
+toBareJID (NodeResourceJID node domain _) = NodeJID node domain
+
 instance Read (JID 'NodeResource) where
   readsPrec prev str =
     case readsPrec prev str of
@@ -191,6 +195,8 @@ instance Show (JID a) where
   show (DomainJID (DomainID domain)) = T.unpack domain
   show (NodeJID (NodeID node) (DomainID domain)) =
     T.unpack $ node <> "@" <> domain
+
+deriving instance Eq (JID a)
 
 instance ToMarkup (JID a) where
     toMarkup = toMarkup . show
