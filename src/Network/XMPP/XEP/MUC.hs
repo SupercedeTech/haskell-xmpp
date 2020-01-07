@@ -19,7 +19,9 @@ module Network.XMPP.XEP.MUC
 ( createRoomStanza, leaveRoomStanza, destroyRoomStanza
 , roomMessageStanza, privateMessageStanza, queryInstantRoomConfigStanza
 , queryForAssociatedServicesStanza, submitInstantRoomConfigStanza
-, UserJID, RoomJID, RoomMemberJID, FromXML(..), MUCPayload(..)
+, setRoomMembersListStanza
+, UserJID, RoomJID, RoomMemberJID, FromXML(..), MUCPayload(..), RoomMembersList(..)
+, Affiliation(..)
 )
 where
 
@@ -28,7 +30,6 @@ import qualified Data.Text          as T
 import           Text.Hamlet.XML    (xml)
 import           Network.XMPP.Types
 import           Network.XMPP.XEP.Form
-
 import Text.XML.HaXml.Xtract.Parse (xtract)
 import Data.Maybe
 import Network.XMPP.Utils
@@ -152,6 +153,20 @@ submitInstantRoomConfigStanza owner room form uuid =
     , iqPurpose = SOutgoing
     }
 
+setRoomMembersListStanza :: RoomJID -> UserJID -> RoomMembersList -> UUID.UUID -> Stanza 'IQ 'Outgoing ()
+setRoomMembersListStanza room admin members uuid =
+  MkIQ
+    { iqFrom = Just $ SomeJID admin
+    , iqTo   = Just $ SomeJID room
+    , iqId   = UUID.toText uuid
+    , iqType = Set
+    , iqBody = [xml|
+        <query xmlns="http://jabber.org/protocol/muc#admin">
+          ^{encodeXml members}
+        |]
+    , iqPurpose = SOutgoing
+    }
+
 data Affiliation =
     OwnerAffiliation
   | AdminAffiliation
@@ -173,6 +188,17 @@ data MUCPayload =
   | MUCRoomConfigRejected
   deriving (Eq, Show)
 
+newtype RoomMembersList = RoomMembersList [(UserJID, Affiliation)]
+  deriving (Eq, Show)
+
+instance ToXML RoomMembersList where
+  encodeXml (RoomMembersList members) =
+    [xml|
+      $forall (jid, affiliation) <- members
+        <item affiliation="#{encodeAffiliation affiliation}"
+              jid="#{T.pack $ show $ toBareJID jid}">
+    |]
+
 instance FromXML MUCPayload where
   decodeXml m
     | matchPatterns m ["/x/item/@jid", "/x/item/@role", "/x/item/@affiliation"]
@@ -189,6 +215,13 @@ instance FromXML MUCPayload where
     = Just MUCRoomConfigRejected
     | otherwise
     = Nothing
+
+encodeAffiliation :: Affiliation -> T.Text
+encodeAffiliation OwnerAffiliation   = "owner"
+encodeAffiliation AdminAffiliation   = "admin"
+encodeAffiliation MemberAffiliation  = "member"
+encodeAffiliation OutcastAffiliation = "outcast"
+encodeAffiliation NoneAffiliation    = "none"
 
 parseAffiliation :: T.Text -> Maybe Affiliation
 parseAffiliation v = case v of
