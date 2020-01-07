@@ -32,7 +32,7 @@ flag examples
 
 flag debug
   description: Enable debugging output
-  default: False
+  default: True
 
 library
   Hs-Source-Dirs: ./src
@@ -70,6 +70,7 @@ library
                  , Network.XMPP.MD5
                  , Network.XMPP.Base64
                  , Network.XMPP.XEP.MUC
+                 , Network.XMPP.XEP.Form
                  , Network.XMPP.XEP.Delayed
                  , Network.XMPP.XEP.Version
                  , Network.XMPP.Concurrent
