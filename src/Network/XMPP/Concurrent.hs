@@ -23,13 +23,15 @@ module Network.XMPP.Concurrent
   , waitFor
   ) where
 
-import Network.XMPP.Stanza
-import Network.XMPP.Types
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Monad.State 
-import Control.Monad.Reader 
+import Control.Monad.State
+import Control.Monad.Reader
+
+import Network.XMPP.Stream
+import Network.XMPP.Types
 import Network.XMPP.Utils
+import Network.XMPP.XML
 
 import System.IO
 
@@ -59,9 +61,9 @@ runThreaded a = do
           loop $ do
             st <- liftIO $ atomically $ readTChan out'
             case st of
-                SomeStanza stnz@MkMessage{ mPurpose = SOutgoing }  -> outStanza stnz
-                SomeStanza stnz@MkPresence{ pPurpose = SOutgoing } -> outStanza stnz
-                SomeStanza stnz@MkIQ{ iqPurpose = SOutgoing }      -> outStanza stnz
+                SomeStanza stnz@MkMessage{ mPurpose = SOutgoing }  -> xmppSend stnz
+                SomeStanza stnz@MkPresence{ pPurpose = SOutgoing } -> xmppSend stnz
+                SomeStanza stnz@MkIQ{ iqPurpose = SOutgoing }      -> xmppSend stnz
                 _                            -> pure () -- Won't happen, but we gotta make compiler happy
       loop = sequence_ . repeat
        

@@ -31,7 +31,6 @@ module Network.XMPP.Types
 , JID(..), JIDQualification(..), SomeJID(..), NodeID(..), ResourceID(..), DomainID(..)
 , StanzaPurpose(..)
 , Sing(..), IncomingSym0, OutgoingSym0, SStanzaPurpose
-, FromXML(..), ToXML(..)
 , toBareJID
 )
 where
@@ -61,13 +60,10 @@ type Resource = T.Text
 
 -- | XMPP stream, used as a state in XmppMonad state transformer
 data Stream
-    = Stream {
-      handle::Handle 
-      -- ^ IO handle to the underlying file or socket
-    , idx :: !Int
-      -- ^ id of the next message (if needed)
-    , lexemes :: [Token]
-      -- ^ Stream of the lexemes coming from server
+    = Stream
+    { handle::Handle     -- ^ IO handle to the underlying file or socket
+    , idx :: !Int        -- ^ id of the next message (if needed)
+    , lexemes :: [Token] -- ^ Stream of the lexemes coming from server
     }
 
 newtype XmppMonad a
@@ -76,11 +72,7 @@ newtype XmppMonad a
 
 runXmppMonad :: XmppMonad a -> IO (a, Stream)
 runXmppMonad = flip runStateT newStream . unXmppMonad
-    where
-        newStream = Stream { handle  = stdin
-                           , idx     = 0
-                           , lexemes = []
-                           }
+  where newStream = Stream { handle = stdin, idx = 0, lexemes = [] }
 
 runXmppMonad' :: Stream -> XmppMonad a -> IO (a, Stream)
 runXmppMonad' s = flip runStateT s . unXmppMonad 
@@ -403,9 +395,3 @@ instance Show (Sing 'Outgoing) where
 
 deriving instance (Show ext) => Show (Stanza t 'Incoming ext)
 deriving instance (Show ext) => Show (Stanza t 'Outgoing ext)
-
-class FromXML a where
-  decodeXml :: Content Posn -> Maybe a
-
-class ToXML a where
-  encodeXml :: a -> [Node]

@@ -27,12 +27,13 @@ where
 
 import qualified Data.UUID          as UUID
 import qualified Data.Text          as T
+import           Data.Maybe         (listToMaybe)
 import           Text.Hamlet.XML    (xml)
+import           Text.XML.HaXml.Xtract.Parse (xtract)
+
 import           Network.XMPP.Types
+import           Network.XMPP.XML
 import           Network.XMPP.XEP.Form
-import Text.XML.HaXml.Xtract.Parse (xtract)
-import Data.Maybe
-import Network.XMPP.Utils
 
 type UserJID = JID 'NodeResource       -- fully qualified user JID in Jabber: for example - JohnWick@localhost/riskbook-web
 type RoomJID = JID 'Node               -- for example - programmers@localhost
@@ -51,10 +52,10 @@ queryForAssociatedServicesStanza from srv uuid =
     }
 
 createRoomStanza :: UserJID -> UserJID -> UUID.UUID -> Stanza 'Presence 'Outgoing MUCPayload
-createRoomStanza who to uuid =
+createRoomStanza who room uuid =
   MkPresence
     { pFrom     = Just $ SomeJID who
-    , pTo       = Just $ SomeJID to
+    , pTo       = Just $ SomeJID room
     , pId       = UUID.toText uuid
     , pType     = Default
     , pShowType = Available
@@ -186,6 +187,7 @@ data MUCPayload =
     MUCRoomCreated Affiliation Role
   | MUCRoomQuery XmppForm
   | MUCRoomConfigRejected
+  | MUCMembersPresences Affiliation Role
   deriving (Eq, Show)
 
 newtype RoomMembersList = RoomMembersList [(UserJID, Affiliation)]
@@ -213,6 +215,10 @@ instance FromXML MUCPayload where
       , "/iq/query/[@xmlns='http://jabber.org/protocol/muc#owner']"
       ]
     = Just MUCRoomConfigRejected
+    | matchPatterns m ["/x/item/@affiliation", "/x/item/@role"]
+    = MUCMembersPresences
+        <$> parseAffiliation (txtpat "/x/item/@affiliation" m)
+        <*> parseRole (txtpat "/x/item/@role" m)
     | otherwise
     = Nothing
 

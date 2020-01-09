@@ -22,7 +22,7 @@ module Network.XMPP.IQ
   ) where 
 
 import Network.XMPP.Types
-import Network.XMPP.Stanza
+import Network.XMPP.Stream
 import Network.XMPP.Concurrent
 import Text.XML (Node)
 import qualified Data.Text as T
@@ -36,9 +36,9 @@ noelem = CElem (Elem (N "root") [] []) noPos
 -- | Send IQ of specified type with supplied data
 iqSend :: T.Text -- ^ ID to use
        -> IQType -- ^ IQ type
-       -> [Node] -- ^ request contents 
+       -> [Node] -- ^ request contents
        -> XmppMonad ()
-iqSend id t body = outStanza $ MkIQ Nothing Nothing id t body SOutgoing
+iqSend id t body = xmppSend $ MkIQ Nothing Nothing id t body SOutgoing
 
 -- Extract IQ reply that matches the supplied predicate from the event stream and send it (transformed)        
 iqReplyTo :: (Stanza 'IQ 'Incoming e -> Bool) -- ^ Predicate used to match required IQ reply
