@@ -11,8 +11,7 @@ import           Data.Maybe
 import           Data.List                   (find)
 import qualified Data.Text                   as T
 
-import           Network.XMPP.Types
-import           Network.XMPP.Utils
+import           Network.XMPP.XML
 
 -- Specification:
 -- https://xmpp.org/extensions/xep-0004.html#table-2

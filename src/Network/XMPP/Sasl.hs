@@ -46,15 +46,15 @@ saslAuth mechanisms server username password
 
 saslDigest :: T.Text -> T.Text -> T.Text -> XmppMonad ()
 saslDigest server username password = do
-    out $ head auth
+    xmppSend $ head auth
     ch_text <- withNextM getChallenge
     resp <- liftIO $ saslDigestResponse ch_text username server password
-    out $ head $ response $ T.pack resp
+    xmppSend $ head $ response $ T.pack resp
     m <- nextM
     unless (null $ tag "failure" m) $ error "Auth failure" -- TODO Oo! ehrm, no!
     let chl_text = getChallenge m
     saslDigestRspAuth chl_text
-    out $ head sndResponse
+    xmppSend $ head sndResponse
     m <- nextM
     unless (not $ null $ tag "success" m) $ error "Auth failed" -- TODO Oo! ehrm, no!
     where

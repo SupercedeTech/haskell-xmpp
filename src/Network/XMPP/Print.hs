@@ -27,17 +27,19 @@ module Network.XMPP.Print
   ) where
 
 import           System.IO
-import qualified Data.Text             as T
-import qualified Data.Text.Lazy        as TL
-import           Text.XML.HaXml        hiding (tag)
-import           Text.XML.HaXml.Types  (Content)
-import qualified Text.XML.HaXml.Pretty as P
-import           Text.XML              (Node)
-import Text.Blaze.Renderer.Text        (renderMarkup)
-import Text.Blaze                      (toMarkup)
-import Text.XML.HaXml.Posn
-import Network.XMPP.UTF8
-import Network.XMPP.Utils
+import qualified Data.Text                       as T
+import qualified Data.Text.Lazy                  as TL
+import           Text.XML                        (Node)
+import           Text.XML.HaXml                  hiding (tag)
+import           Text.XML.HaXml.Types            (Content)
+import           Text.XML.HaXml.Posn             (Posn)
+import qualified Text.XML.HaXml.Pretty           as P
+import           Text.Blaze.Renderer.Text        (renderMarkup)
+import           Text.Blaze                      (toMarkup)
+
+import           Network.XMPP.UTF8
+import           Network.XMPP.Utils
+import           Network.XMPP.XML
 
 -- | Convert the internal representation (built using HaXml combinators) into string, 
 -- and print it out
@@ -60,13 +62,12 @@ hPutNode h n = do
 
 -- | Render HaXML combinators into string, hacked for XMPP
 renderXmpp :: Content Posn -> String
-renderXmpp theXml =
-    case theXml of
-      -- stupid hack for <stream:stream> and </stream:stream>
-      xml@(CElem (Elem (N "stream:stream") _ _) _) ->
-          (:) '<' $ takeWhile (/= '<') $ tail $ render $ P.content xml
-      xml ->
-          render $ P.content xml
+renderXmpp theXml = case theXml of
+  -- stupid hack for <stream:stream> and </stream:stream>
+  xml@(CElem (Elem (N "stream:stream") _ _) _) ->
+    (:) '<' $ takeWhile (/= '<') $ tail $ render $ P.content xml
+  xml -> render $ P.content xml
+
 
 ---
 --- XMPP construction combinators, based on the Text.Html
@@ -95,8 +96,7 @@ stream typ server =
 --
 
 streamEnd :: CFilter i
-streamEnd =
-    mkElemAttr "/stream:stream" [] [ mkElemAttr "" [] [] ]
+streamEnd = mkElemAttr "/stream:stream" [] [mkElemAttr "" [] []]
 
 ---
 --- Predefined XMPP attributes

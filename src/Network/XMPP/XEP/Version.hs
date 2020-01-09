@@ -21,7 +21,7 @@ module Network.XMPP.XEP.Version
     ) where
 
 import Network.XMPP.Types
-import Network.XMPP.Utils
+import Network.XMPP.XML
 
 import Text.XML.HaXml
     

@@ -17,34 +17,38 @@
 -----------------------------------------------------------------------------
 
 module Network.XMPP.Core
-  ( initiateStream
+  ( initStream
+  , closeStream
   ) where
 
-import Control.Monad.State
-import System.IO
+import Control.Monad        (void)
+import System.IO            (Handle, hSetBuffering, BufferMode(..))
+import Control.Monad.IO.Class (liftIO)
 
-import qualified Data.Text as T
+import Data.Text            (unpack)
 import Text.Hamlet.XML      (xml)
-import Text.XML.HaXml.Types (Content(..), Element(..), QName(..))
-import Text.XML.HaXml.Posn  (noPos, Posn)
+
+import Network.XMPP.Utils   (debug)
 import Network.XMPP.Sasl    (saslAuth)
-import Network.XMPP.Print
-import Network.XMPP.Stream
-import Network.XMPP.Types
-import Network.XMPP.IQ
-import Network.XMPP.Utils
+import Network.XMPP.IQ      (iqSend)
+import Network.XMPP.Print   (stream, streamEnd)
+import Network.XMPP.XML     (noelem, lookupAttr, getText)
+import Network.XMPP.Types   (Server, Username, Password, Resource, XmppMonad,
+                             JID(..), JIDQualification(..), StreamType(..), IQType(..))
+import Network.XMPP.Stream  (resetStreamHandle, XmppSendable(..),
+                             xtractM, textractM, startM,)
 
 -- | Open connection to specified server and return `Stream' coming from it
-initiateStream :: Handle
+initStream :: Handle
                -> Server -- ^ Server (hostname) we are connecting to
                -> Username -- ^ Username to use
                -> Password -- ^ Password to use
                -> Resource -- ^ Resource to use
                -> XmppMonad (JID 'NodeResource)
-initiateStream h server username password resrc =
+initStream h server username password resrc =
   do liftIO $ hSetBuffering h NoBuffering
      resetStreamHandle h
-     outPosn $ head $ stream Client server noelem
+     xmppSend $ head $ stream Client server noelem
      attrs <- startM
      case lookupAttr "version" attrs of
         Just "1.0" -> return ()
@@ -63,7 +67,7 @@ initiateStream h server username password resrc =
      -- Handle the authentication
      saslAuth mechs server username password
 
-     outPosn $ head $ stream Client server noelem
+     xmppSend $ head $ stream Client server noelem
 
      void startM
 
@@ -83,7 +87,7 @@ initiateStream h server username password resrc =
 
      void $ xtractM "/iq[@type='result' & @id='session1']" -- (error "Session binding failed")
 
-     return (read $ T.unpack my_jid)
+     return $ read $ unpack my_jid
 
-noelem :: Content Posn
-noelem = CElem (Elem (N "root") [] []) noPos
+closeStream :: XmppMonad ()
+closeStream = xmppSend $ head $ streamEnd noelem

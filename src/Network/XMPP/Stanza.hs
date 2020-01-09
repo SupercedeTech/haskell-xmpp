@@ -27,58 +27,20 @@
 -----------------------------------------------------------------------------
 
 module Network.XMPP.Stanza
-( parse, parseM, waitAndProcess
-, withUUID, outStanza
-, StanzaEncoder(..), StanzaDecoder(..)
-) where
+  ( StanzaEncoder(..)
+  , StanzaDecoder(..)
+  ) where
 
-import           Control.Monad.IO.Class      (MonadIO(..))
 import           Control.Applicative         (Alternative, empty, pure)
 import           Data.Maybe                  (mapMaybe)
-import qualified Data.UUID.V4                as UUID
-import qualified Data.UUID                   as UUID
 import qualified Data.Text                   as T
 import           Text.Hamlet.XML             (xml)
 import           Text.XML                    (Node)
 import           Text.XML.HaXml              (Content)
 import           Text.XML.HaXml.Posn         (Posn)
 import           Text.XML.HaXml.Xtract.Parse (xtract)
-import           Network.XMPP.Stream
 import           Network.XMPP.Types
-import           Network.XMPP.Utils
-
--- | Parses XML element producing Stanza
-parse :: forall l e. (Alternative l, FromXML e) => Content Posn -> l (SomeStanza e)
-parse m | xtractp id "/message" m  = mSucceed (decodeStanza m :: Maybe (Stanza 'Message 'Incoming e))
-        | xtractp id "/presence" m = mSucceed (decodeStanza m :: Maybe (Stanza 'Presence 'Incoming e))
-        | xtractp id "/iq" m       = mSucceed (decodeStanza m :: Maybe (Stanza 'IQ 'Incoming e))
-        | otherwise                = empty
-  where xtractp f p m = not . null $ xtract f p m
-        mSucceed :: (Alternative l, FromXML e) => Maybe (Stanza t p e) -> l (SomeStanza e)
-        mSucceed = maybe empty (pure . SomeStanza)
-
--- | Gets next message from stream and parses it
--- | We shall skip over unknown messages, rather than crashing
-parseM :: FromXML e => XmppMonad (SomeStanza e)
-parseM = (parse <$> nextM) >>= maybe parseM pure
-
--- | Skips all messages, that will return result `Nothing` from computation
--- | In other words - waits for appropriate message, defined by predicate
-waitAndProcess :: FromXML e => (SomeStanza e -> Maybe a) -> XmppMonad a
-waitAndProcess compute = (compute <$> parseM) >>= maybe (waitAndProcess compute) pure
-
--- | Extract text from `Content Posn' with supplied pattern
-txt :: T.Text      -- ^ xtract-like pattern to match
-    -> Content Posn -- ^ message being processed
-    -> T.Text      -- ^ result of extraction
-txt p m = getText_ $ xtract id (T.unpack p) m
-
--- | Converts stanza to XML and outputs it
-outStanza :: (StanzaEncoder t 'Outgoing e Node) => Stanza t 'Outgoing  e-> XmppMonad ()
-outStanza = out . encodeStanza
-
-withUUID :: MonadIO m => (UUID.UUID -> Stanza t p e) -> m (Stanza t p e)
-withUUID setUUID = setUUID <$> liftIO UUID.nextRandom
+import           Network.XMPP.XML
 
 --------------------------------------------------------------------------------
 
@@ -96,7 +58,7 @@ condToAlt f x = if f x then pure x else empty
 toAttrList :: [(String, Maybe a)] -> [(String, a)]
 toAttrList = mapMaybe sequence
 
-instance StanzaEncoder 'Message 'Outgoing e Node where
+instance {-# OVERLAPPING #-} StanzaEncoder 'Message 'Outgoing e Node where
   encodeStanza MkMessage{..} = head [xml|
     <message *{messageAttrs} xml:lang=en>
       <body *{bodyAttrs}>
@@ -114,7 +76,7 @@ instance StanzaEncoder 'Message 'Outgoing e Node where
         , ("thread", T.unpack <$> condToAlt (not . T.null) mThread)
         ]
 
-instance StanzaEncoder 'Presence 'Outgoing e Node where
+instance {-# OVERLAPPING #-} StanzaEncoder 'Presence 'Outgoing e Node where
   encodeStanza MkPresence{ pPurpose = SOutgoing, ..} = head [xml|
     <presence *{attrs} xml:lang="en">
       ^{pExt}
@@ -130,7 +92,7 @@ instance StanzaEncoder 'Presence 'Outgoing e Node where
         , ("priority", show <$> pPriority)
         ]
 
-instance StanzaEncoder 'IQ 'Outgoing e Node where
+instance {-# OVERLAPPING #-} StanzaEncoder 'IQ 'Outgoing e Node where
   encodeStanza MkIQ{ iqPurpose = SOutgoing, ..} = head [xml|
     <iq *{attrs} xml:lang="en">
       ^{iqBody}
@@ -143,9 +105,14 @@ instance StanzaEncoder 'IQ 'Outgoing e Node where
         , ("type", Just $ show iqType)
         ]
 
+instance StanzaEncoder t 'Outgoing e Node where
+  encodeStanza s@MkPresence{} = encodeStanza s
+  encodeStanza s@MkMessage{}  = encodeStanza s
+  encodeStanza s@MkIQ{}       = encodeStanza s
+
 instance FromXML e => StanzaDecoder 'Message 'Incoming e (Content Posn) where
   decodeStanza m = Just $ MkMessage
-    { mFrom    = mread $ T.unpack $ txt "/message/@from" m
+    { mFrom    = mread $ T.unpack $ txtpat "/message/@from" m
     , mTo      = read $ T.unpack $ getText_ $ xtract id "/message/@to" m
     , mId      = getText_ $ xtract id "/message/@id" m
     , mType    = read $ T.unpack $ getText_ $ xtract id "/message/@type" m
@@ -158,22 +125,22 @@ instance FromXML e => StanzaDecoder 'Message 'Incoming e (Content Posn) where
 
 instance FromXML e => StanzaDecoder 'Presence 'Incoming e (Content Posn) where
   decodeStanza m = Just $ MkPresence
-    { pFrom     = mread $ T.unpack $ txt "/presence/@from" m
-    , pTo       = mread $ T.unpack $ txt "/presence/@to" m
-    , pId       = txt "/presence/@id" m
-    , pType     = read $ T.unpack $ txt "/presence/@type" m
-    , pShowType = read $ T.unpack $ txt "/presence/show/-" m
-    , pStatus   = txt "/presence/status/-" m
-    , pPriority = mread $ T.unpack $ txt "/presence/priority/-" m
-    , pExt     = maybe (Left $ xtract id "/presence/*" m) Right $ decodeXml m 
+    { pFrom     = mread $ T.unpack $ txtpat "/presence/@from" m
+    , pTo       = mread $ T.unpack $ txtpat "/presence/@to" m
+    , pId       = txtpat "/presence/@id" m
+    , pType     = read $ T.unpack $ txtpat "/presence/@type" m
+    , pShowType = read $ T.unpack $ txtpat "/presence/show/-" m
+    , pStatus   = txtpat "/presence/status/-" m
+    , pPriority = mread $ T.unpack $ txtpat "/presence/priority/-" m
+    , pExt      = maybe (Left $ xtract id "/presence/*" m) Right $ decodeXml m 
     , pPurpose  = SIncoming
     }
 
 instance FromXML e => StanzaDecoder 'IQ 'Incoming e (Content Posn) where
-  decodeStanza m = Just MkIQ { iqFrom   = mread $ T.unpack $ txt "/iq/@from" m
-                            , iqTo      = mread $ T.unpack $ txt "/iq/@to" m
-                            , iqId      = txt "/iq/@id" m
-                            , iqType    = read $ T.unpack $ txt "/iq/@type" m
+  decodeStanza m = Just MkIQ { iqFrom   = mread $ T.unpack $ txtpat "/iq/@from" m
+                            , iqTo      = mread $ T.unpack $ txtpat "/iq/@to" m
+                            , iqId      = txtpat "/iq/@id" m
+                            , iqType    = read $ T.unpack $ txtpat "/iq/@type" m
                             , iqBody    = maybe (Left [m]) Right $ decodeXml m 
                             , iqPurpose = SIncoming
                             }
