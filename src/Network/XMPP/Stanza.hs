@@ -32,7 +32,7 @@ module Network.XMPP.Stanza
   ) where
 
 import           Control.Applicative         (Alternative, empty, pure)
-import           Data.Maybe                  (mapMaybe)
+import           Data.Maybe                  (mapMaybe, listToMaybe)
 import qualified Data.Text                   as T
 import           Text.Hamlet.XML             (xml)
 import           Text.XML                    (Node)
@@ -124,17 +124,20 @@ instance FromXML e => StanzaDecoder 'Message 'Incoming e (Content Posn) where
     }
 
 instance FromXML e => StanzaDecoder 'Presence 'Incoming e (Content Posn) where
-  decodeStanza m = Just $ MkPresence
-    { pFrom     = mread $ T.unpack $ txtpat "/presence/@from" m
-    , pTo       = mread $ T.unpack $ txtpat "/presence/@to" m
-    , pId       = txtpat "/presence/@id" m
-    , pType     = read $ T.unpack $ txtpat "/presence/@type" m
-    , pShowType = read $ T.unpack $ txtpat "/presence/show/-" m
-    , pStatus   = txtpat "/presence/status/-" m
-    , pPriority = mread $ T.unpack $ txtpat "/presence/priority/-" m
-    , pExt      = maybe (Left $ xtract id "/presence/*" m) Right $ decodeXml m 
-    , pPurpose  = SIncoming
-    }
+  decodeStanza m =
+    let content = xtract id "/presence/*" m
+    in
+      Just $ MkPresence
+        { pFrom     = mread $ T.unpack $ txtpat "/presence/@from" m
+        , pTo       = mread $ T.unpack $ txtpat "/presence/@to" m
+        , pId       = txtpat "/presence/@id" m
+        , pType     = read $ T.unpack $ txtpat "/presence/@type" m
+        , pShowType = read $ T.unpack $ txtpat "/presence/show/-" m
+        , pStatus   = txtpat "/presence/status/-" m
+        , pPriority = mread $ T.unpack $ txtpat "/presence/priority/-" m
+        , pPurpose  = SIncoming
+        , pExt = maybe (Left content) Right $ listToMaybe $ mapMaybe decodeXml content
+        }
 
 instance FromXML e => StanzaDecoder 'IQ 'Incoming e (Content Posn) where
   decodeStanza m = Just MkIQ { iqFrom   = mread $ T.unpack $ txtpat "/iq/@from" m
