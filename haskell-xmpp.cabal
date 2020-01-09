@@ -67,6 +67,7 @@ library
                  , Network.XMPP.IM.Presence
                  , Network.XMPP.IQ
                  , Network.XMPP.UTF8
+                 , Network.XMPP.XML
                  , Network.XMPP.MD5
                  , Network.XMPP.Base64
                  , Network.XMPP.XEP.MUC
