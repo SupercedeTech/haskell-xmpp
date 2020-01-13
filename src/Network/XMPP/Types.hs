@@ -86,20 +86,11 @@ runXmppMonad' s = flip runStateT s . unXmppMonad
 -- <domain>   - <hname>["."<hname>]*                  - The domain identifier (required)
 -- <resource> - <any-char>[<any-char>]*               - The resource identifier (optional)
 
-newtype DomainID = DomainID T.Text deriving (Eq, Show)
+newtype DomainID = DomainID { unDomainID :: T.Text } deriving (Eq, Show)
 
-newtype NodeID = NodeID T.Text deriving (Eq, Show)
+newtype NodeID = NodeID { unNodeID :: T.Text } deriving (Eq, Show)
 
-newtype ResourceID = ResourceID T.Text deriving (Eq, Show)
-
-newtype JIDDomain = JIDDomain DomainID
-  deriving (Eq, Show)
-
-data JIDNodeResource = JIDNodeResource DomainID ResourceID
-  deriving (Eq, Show)
-
-data JIDResource = JIDResource DomainID ResourceID
-  deriving (Eq, Show)
+newtype ResourceID = ResourceID { unResourceID :: T.Text } deriving (Eq, Show)
 
 data JIDQualification
   = Resource

@@ -54,6 +54,7 @@ library
                , text
                , blaze-markup
                , singletons
+               , time
 
   Exposed-modules: Network.XMPP
                  , Network.XMPP.Sasl

@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Network.XMPP.XML
   ( strAttr
   , getVals
@@ -64,9 +66,9 @@ xtractp f p m = not . null $ xtract (unpack . f . pack) (unpack p) m
 matchPatterns :: Content i -> [Text] -> Bool
 matchPatterns m = all $ flip (xtractp id) m
 
-mread :: Read a => String -> Maybe a
+mread :: Read a => Text -> Maybe a
 mread "" = Nothing
-mread a = Just $ read a
+mread a = Just $ read $ unpack a
 
 mattr :: (Show a) => b -> Maybe a -> [(b, CFilter i)]
 mattr s (Just a) = [ strAttr s (show a) ]

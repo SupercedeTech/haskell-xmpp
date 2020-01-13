@@ -1,6 +1,7 @@
 { mkDerivation, array, base, blaze-markup, HaXml, html, mtl
 , network, polyparse, pretty, random, regex-compat, singletons
-, stdenv, stm, text, utf8-string, uuid, xml-conduit, xml-hamlet
+, stdenv, stm, text, time, utf8-string, uuid, xml-conduit
+, xml-hamlet
 }:
 mkDerivation {
   pname = "haskell-xmpp";
@@ -10,7 +11,7 @@ mkDerivation {
   isExecutable = true;
   libraryHaskellDepends = [
     array base blaze-markup HaXml html mtl network polyparse pretty
-    random regex-compat singletons stm text utf8-string uuid
+    random regex-compat singletons stm text time utf8-string uuid
     xml-conduit xml-hamlet
   ];
   homepage = "http://patch-tag.com/r/adept/haskell-xmpp/home";
