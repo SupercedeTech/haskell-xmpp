@@ -221,10 +221,10 @@ instance FromXML MUCPayload where
     = MUCMembersPresences
         <$> parseAffiliation (txtpat "/x/item/@affiliation" m)
         <*> parseRole (txtpat "/x/item/@role" m)
-    | matchPatterns m ["/delay@from", "/delay@stamp"]
+    | matchPatterns m ["/delay/@from", "/delay/@stamp"]
     = MUCDelay
-        <$> mread (txtpat "/delay@from" m)
-        <*> mread (T.replace "T" " " $ txtpat "/delay@stamp" m)
+        <$> mread (txtpat "/delay/@from" m)
+        <*> mread (T.replace "T" " " $ txtpat "/delay/@stamp" m)
     | otherwise
     = Nothing
 
