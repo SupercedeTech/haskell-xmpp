@@ -111,37 +111,41 @@ instance StanzaEncoder t 'Outgoing e Node where
   encodeStanza s@MkIQ{}       = encodeStanza s
 
 instance FromXML e => StanzaDecoder 'Message 'Incoming e (Content Posn) where
-  decodeStanza m = Just $ MkMessage
-    { mFrom    = mread $ T.unpack $ txtpat "/message/@from" m
-    , mTo      = read $ T.unpack $ getText_ $ xtract id "/message/@to" m
-    , mId      = getText_ $ xtract id "/message/@id" m
-    , mType    = read $ T.unpack $ getText_ $ xtract id "/message/@type" m
-    , mSubject = getText_ $ xtract id "/message/subject/-" m
-    , mBody    = getText_ $ xtract id "/message/body/-" m
-    , mThread  = getText_ $ xtract id "/message/thread/-" m
-    , mExt     = maybe (Left $ xtract id "/message/*" m) Right $ decodeXml m 
-    , mPurpose = SIncoming
-    }
+  decodeStanza m =
+    let content = xtract id "/message/*" m
+    in
+      Just $ MkMessage
+        { mFrom    = mread $ txtpat "/message/@from" m
+        , mTo      = read $ T.unpack $ getText_ $ xtract id "/message/@to" m
+        , mId      = getText_ $ xtract id "/message/@id" m
+        , mType    = read $ T.unpack $ getText_ $ xtract id "/message/@type" m
+        , mSubject = getText_ $ xtract id "/message/subject/-" m
+        , mBody    = getText_ $ xtract id "/message/body/-" m
+        , mThread  = getText_ $ xtract id "/message/thread/-" m
+        , mExt     = maybe (Left content) Right $ listToMaybe $ mapMaybe decodeXml
+                                                                        content
+        , mPurpose = SIncoming
+        }
 
 instance FromXML e => StanzaDecoder 'Presence 'Incoming e (Content Posn) where
   decodeStanza m =
     let content = xtract id "/presence/*" m
     in
       Just $ MkPresence
-        { pFrom     = mread $ T.unpack $ txtpat "/presence/@from" m
-        , pTo       = mread $ T.unpack $ txtpat "/presence/@to" m
+        { pFrom     = mread $ txtpat "/presence/@from" m
+        , pTo       = mread $ txtpat "/presence/@to" m
         , pId       = txtpat "/presence/@id" m
         , pType     = read $ T.unpack $ txtpat "/presence/@type" m
         , pShowType = read $ T.unpack $ txtpat "/presence/show/-" m
         , pStatus   = txtpat "/presence/status/-" m
-        , pPriority = mread $ T.unpack $ txtpat "/presence/priority/-" m
+        , pPriority = mread $ txtpat "/presence/priority/-" m
         , pPurpose  = SIncoming
         , pExt = maybe (Left content) Right $ listToMaybe $ mapMaybe decodeXml content
         }
 
 instance FromXML e => StanzaDecoder 'IQ 'Incoming e (Content Posn) where
-  decodeStanza m = Just MkIQ { iqFrom   = mread $ T.unpack $ txtpat "/iq/@from" m
-                            , iqTo      = mread $ T.unpack $ txtpat "/iq/@to" m
+  decodeStanza m = Just MkIQ { iqFrom   = mread $ txtpat "/iq/@from" m
+                            , iqTo      = mread $ txtpat "/iq/@to" m
                             , iqId      = txtpat "/iq/@id" m
                             , iqType    = read $ T.unpack $ txtpat "/iq/@type" m
                             , iqBody    = maybe (Left [m]) Right $ decodeXml m 
