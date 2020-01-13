@@ -224,7 +224,7 @@ instance FromXML MUCPayload where
     | matchPatterns m ["/delay@from", "/delay@stamp"]
     = MUCDelay
         <$> mread (txtpat "/delay@from" m)
-        <*> mread (txtpat "/delay@stamp" m)
+        <*> mread (T.replace "T" " " $ txtpat "/delay@stamp" m)
     | otherwise
     = Nothing
 
