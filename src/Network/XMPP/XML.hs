@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Network.XMPP.XML
   ( strAttr
   , getVals
@@ -24,6 +26,7 @@ import qualified Text.XML.HaXml.Pretty           as P
 import           Text.XML.HaXml.Xtract.Parse     (xtract)
 import           Text.PrettyPrint.HughesPJ       (hcat)
 import           Data.Text                       (Text, pack, unpack)
+import           Text.Read
 
 class FromXML a where
   decodeXml :: Content Posn -> Maybe a
@@ -64,9 +67,9 @@ xtractp f p m = not . null $ xtract (unpack . f . pack) (unpack p) m
 matchPatterns :: Content i -> [Text] -> Bool
 matchPatterns m = all $ flip (xtractp id) m
 
-mread :: Read a => String -> Maybe a
+mread :: Read a => Text -> Maybe a
 mread "" = Nothing
-mread a = Just $ read a
+mread a = readMaybe $ unpack a
 
 mattr :: (Show a) => b -> Maybe a -> [(b, CFilter i)]
 mattr s (Just a) = [ strAttr s (show a) ]

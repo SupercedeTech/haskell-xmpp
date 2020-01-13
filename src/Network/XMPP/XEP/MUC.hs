@@ -28,6 +28,7 @@ where
 import qualified Data.UUID          as UUID
 import qualified Data.Text          as T
 import           Data.Maybe         (listToMaybe)
+import           Data.Time          (UTCTime)
 import           Text.Hamlet.XML    (xml)
 import           Text.XML.HaXml.Xtract.Parse (xtract)
 
@@ -188,6 +189,7 @@ data MUCPayload =
   | MUCRoomQuery XmppForm
   | MUCRoomConfigRejected
   | MUCMembersPresences Affiliation Role
+  | MUCDelay RoomJID UTCTime
   deriving (Eq, Show)
 
 newtype RoomMembersList = RoomMembersList [(UserJID, Affiliation)]
@@ -219,6 +221,10 @@ instance FromXML MUCPayload where
     = MUCMembersPresences
         <$> parseAffiliation (txtpat "/x/item/@affiliation" m)
         <*> parseRole (txtpat "/x/item/@role" m)
+    | matchPatterns m ["/delay/@from", "/delay/@stamp"]
+    = MUCDelay
+        <$> mread (txtpat "/delay/@from" m)
+        <*> mread (T.replace "T" " " $ txtpat "/delay/@stamp" m)
     | otherwise
     = Nothing
 
