@@ -216,12 +216,12 @@ instance FromXML MUCPayload where
     = MUCRoomCreated
       <$> parseAffiliation (txtpat "/x/item/@affiliation" m)
       <*> parseRole (txtpat "/x/item/@role" m)
-    | matchPatterns m ["/iq/query/x"]
-    = MUCRoomQuery <$> (listToMaybe (xtract id "/iq/query/x" m) >>= decodeXml)
+    | matchPatterns m ["/query/x"]
+    = MUCRoomQuery <$> (listToMaybe (xtract id "/query/x" m) >>= decodeXml)
     | matchPatterns
       m
-      [ "/iq/query/[@type='cancel]"
-      , "/iq/query/[@xmlns='http://jabber.org/protocol/muc#owner']"
+      [ "/query/[@type='cancel]"
+      , "/query/[@xmlns='http://jabber.org/protocol/muc#owner']"
       ]
     = Just MUCRoomConfigRejected
     | matchPatterns m ["/x/item/@affiliation", "/x/item/@role"]
