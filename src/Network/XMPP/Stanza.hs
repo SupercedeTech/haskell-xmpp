@@ -67,7 +67,7 @@ instance {-# OVERLAPPING #-} StanzaEncoder 'Message 'Outgoing e Node where
     where
       messageAttrs = toAttrList
         [ ("from", show <$> mFrom)
-        , ("to", Just $ show mTo)
+        , ("to", show <$> mTo)
         , ("id", Just $ T.unpack mId)
         , ("type", Just $ show mType)
         ]

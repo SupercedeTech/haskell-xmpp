@@ -32,7 +32,7 @@ flag examples
 
 flag debug
   description: Enable debugging output
-  default: True
+  default: False
 
 library
   Hs-Source-Dirs: ./src
