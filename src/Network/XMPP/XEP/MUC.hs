@@ -34,6 +34,7 @@ import           Text.XML.HaXml.Xtract.Parse (xtract)
 
 import           Network.XMPP.Types
 import           Network.XMPP.XML
+import           Network.XMPP.Stanza
 import           Network.XMPP.XEP.Form
 
 type UserJID = JID 'NodeResource       -- fully qualified user JID in Jabber: for example - JohnWick@localhost/riskbook-web
@@ -104,7 +105,7 @@ privateMessageStanza
 privateMessageStanza from to msg uuid = 
   MkMessage
     { mFrom    = Just $ SomeJID from
-    , mTo      = SomeJID to
+    , mTo      = Just $ SomeJID to
     , mId      = UUID.toText uuid
     , mType    = Chat
     , mSubject = ""
@@ -123,7 +124,7 @@ roomMessageStanza
 roomMessageStanza from to msg uuid =
   MkMessage
     { mFrom    = Just $ SomeJID from
-    , mTo      = SomeJID to
+    , mTo      = Just $ SomeJID to
     , mId      = UUID.toText uuid
     , mType    = GroupChat
     , mSubject = ""
@@ -190,7 +191,13 @@ data MUCPayload =
   | MUCRoomConfigRejected
   | MUCMembersPresences Affiliation Role
   | MUCDelay RoomJID UTCTime
-  deriving (Eq, Show)
+  | MUCArchivedMessage
+    { mamMessage  :: Stanza 'Message 'Incoming ()
+    , mamFrom     :: JID 'Domain
+    , mamWhen     :: UTCTime
+    , mamStoredId :: T.Text
+    }
+  deriving (Show)
 
 newtype RoomMembersList = RoomMembersList [(UserJID, Affiliation)]
   deriving (Eq, Show)
@@ -219,12 +226,18 @@ instance FromXML MUCPayload where
     = Just MUCRoomConfigRejected
     | matchPatterns m ["/x/item/@affiliation", "/x/item/@role"]
     = MUCMembersPresences
-        <$> parseAffiliation (txtpat "/x/item/@affiliation" m)
-        <*> parseRole (txtpat "/x/item/@role" m)
+      <$> parseAffiliation (txtpat "/x/item/@affiliation" m)
+      <*> parseRole (txtpat "/x/item/@role" m)
     | matchPatterns m ["/delay/@from", "/delay/@stamp"]
-    = MUCDelay
-        <$> mread (txtpat "/delay/@from" m)
-        <*> mread (T.replace "T" " " $ txtpat "/delay/@stamp" m)
+    = MUCDelay <$> mread (txtpat "/delay/@from" m) <*> mread
+      (T.replace "T" " " $ txtpat "/delay/@stamp" m)
+    | matchPatterns m ["/result", "/result/forwarded/message"]
+    = 
+      let mMsg = listToMaybe (xtract id "/result/forwarded/message" m) >>= decodeStanza
+          mFrom = mread $ txtpat "/result/forwarded/delay/@from" m
+          mTime = mread $ T.replace "T" " " $ txtpat "/result/forwarded/delay/@stamp" m
+          storedId = txtpat "/result/forwarded/message/stanza-id/@id" m
+      in MUCArchivedMessage <$> mMsg <*> mFrom <*> mTime <*> Just storedId
     | otherwise
     = Nothing
 
