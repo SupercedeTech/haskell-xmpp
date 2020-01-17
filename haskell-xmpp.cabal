@@ -73,6 +73,7 @@ library
                  , Network.XMPP.Base64
                  , Network.XMPP.XEP.MUC
                  , Network.XMPP.XEP.Form
+                 , Network.XMPP.XEP.MAM
                  , Network.XMPP.XEP.Delayed
                  , Network.XMPP.XEP.Version
                  , Network.XMPP.Concurrent
