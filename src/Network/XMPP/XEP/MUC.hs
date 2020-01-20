@@ -67,11 +67,11 @@ createRoomStanza who room uuid =
     , pPurpose = SOutgoing
     }
 
-leaveRoomStanza :: JID 'NodeResource -> UUID.UUID -> Stanza 'Presence 'Outgoing MUCPayload
-leaveRoomStanza jid uuid =
+leaveRoomStanza :: UserJID -> RoomMemberJID -> UUID.UUID -> Stanza 'Presence 'Outgoing MUCPayload
+leaveRoomStanza user member uuid =
   MkPresence
-    { pFrom     = Nothing
-    , pTo       = Just $ SomeJID jid
+    { pFrom     = Just $ SomeJID user
+    , pTo       = Just $ SomeJID member
     , pId       = UUID.toText uuid
     , pType     = Unavailable
     , pShowType = Available
