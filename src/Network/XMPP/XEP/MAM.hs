@@ -5,6 +5,7 @@
 
 module Network.XMPP.XEP.MAM
   ( messageArchiveQueryStanza
+  , defMamQuery
   , MAMQuery(..)
   , MAMPayload(..)
   ) where
@@ -49,6 +50,14 @@ messageArchiveQueryStanza MAMQuery {..} uuid =
                   <max>#{pack $ show mqLimit}
                   $maybe afterId <- mqAfter
                     <after>#{afterId}
+
+                  $if mqFromLatest
+                    <before>
+                      $maybe beforeId <- mqBefore
+                        #{beforeId}
+                  $else
+                    $maybe beforeId <- mqBefore
+                      <before>#{beforeId}
             |]
           }
 
@@ -59,7 +68,21 @@ data MAMQuery = MAMQuery
   , mqRoom  :: Maybe (JID 'Node)
   , mqLimit :: Int
   , mqAfter :: Maybe Text
+  , mqBefore :: Maybe Text
+  , mqFromLatest :: Bool
   } deriving (Show)
+
+defMamQuery :: MAMQuery
+defMamQuery = MAMQuery
+  { mqStart = Nothing
+  , mqEnd   = Nothing
+  , mqWith  = Nothing
+  , mqRoom  = Nothing
+  , mqLimit = 10
+  , mqAfter = Nothing
+  , mqBefore = Nothing
+  , mqFromLatest = False
+  }
 
 data MAMPayload = MAMFinalPayload
   { mComplete :: Bool

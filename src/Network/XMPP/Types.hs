@@ -75,7 +75,7 @@ runXmppMonad = flip runStateT newStream . unXmppMonad
   where newStream = Stream { handle = stdin, idx = 0, lexemes = [] }
 
 runXmppMonad' :: Stream -> XmppMonad a -> IO (a, Stream)
-runXmppMonad' s = flip runStateT s . unXmppMonad 
+runXmppMonad' s = flip runStateT s . unXmppMonad
 
 --------------------------------------------------------------------------------
 -- | Jabber ID (JID) datatype
