@@ -27,12 +27,19 @@ import           Text.XML.HaXml.Xtract.Parse     (xtract)
 import           Text.PrettyPrint.HughesPJ       (hcat)
 import           Data.Text                       (Text, pack, unpack)
 import           Text.Read
+import           Control.Applicative             ((<|>))
 
 class FromXML a where
   decodeXml :: Content Posn -> Maybe a
 
 class ToXML a where
   encodeXml :: a -> [Node]
+
+instance FromXML () where
+  decodeXml _ = Just ()
+
+instance (FromXML a, FromXML b) => FromXML (Either a b) where
+  decodeXml m = (Left <$> decodeXml m) <|> (Right <$> decodeXml m)
 
 strAttr :: a -> String -> (a, CFilter i)
 strAttr s d = (s, literal d)

@@ -67,7 +67,7 @@ instance {-# OVERLAPPING #-} StanzaEncoder 'Message 'Outgoing e Node where
     where
       messageAttrs = toAttrList
         [ ("from", show <$> mFrom)
-        , ("to", Just $ show mTo)
+        , ("to", show <$> mTo)
         , ("id", Just $ T.unpack mId)
         , ("type", Just $ show mType)
         ]
@@ -116,14 +116,14 @@ instance FromXML e => StanzaDecoder 'Message 'Incoming e (Content Posn) where
     in
       Just $ MkMessage
         { mFrom    = mread $ txtpat "/message/@from" m
-        , mTo      = read $ T.unpack $ getText_ $ xtract id "/message/@to" m
+        , mTo      = mread $ txtpat "/message/@to" m
         , mId      = getText_ $ xtract id "/message/@id" m
         , mType    = read $ T.unpack $ getText_ $ xtract id "/message/@type" m
         , mSubject = getText_ $ xtract id "/message/subject/-" m
         , mBody    = getText_ $ xtract id "/message/body/-" m
         , mThread  = getText_ $ xtract id "/message/thread/-" m
         , mExt     = maybe (Left content) Right $ listToMaybe $ mapMaybe decodeXml
-                                                                        content
+                                                                         content
         , mPurpose = SIncoming
         }
 
@@ -144,11 +144,15 @@ instance FromXML e => StanzaDecoder 'Presence 'Incoming e (Content Posn) where
         }
 
 instance FromXML e => StanzaDecoder 'IQ 'Incoming e (Content Posn) where
-  decodeStanza m = Just MkIQ { iqFrom   = mread $ txtpat "/iq/@from" m
-                            , iqTo      = mread $ txtpat "/iq/@to" m
-                            , iqId      = txtpat "/iq/@id" m
-                            , iqType    = read $ T.unpack $ txtpat "/iq/@type" m
-                            , iqBody    = maybe (Left [m]) Right $ decodeXml m 
-                            , iqPurpose = SIncoming
-                            }
-
+  decodeStanza m =
+    let content = xtract id "/iq/*" m
+    in
+      Just MkIQ
+        { iqFrom    = mread $ txtpat "/iq/@from" m
+        , iqTo      = mread $ txtpat "/iq/@to" m
+        , iqId      = txtpat "/iq/@id" m
+        , iqType    = read $ T.unpack $ txtpat "/iq/@type" m
+        , iqBody = maybe (Left content) Right $ listToMaybe $ mapMaybe decodeXml
+                                                                      content
+        , iqPurpose = SIncoming
+        }

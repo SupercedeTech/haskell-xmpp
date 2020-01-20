@@ -75,7 +75,7 @@ runXmppMonad = flip runStateT newStream . unXmppMonad
   where newStream = Stream { handle = stdin, idx = 0, lexemes = [] }
 
 runXmppMonad' :: Stream -> XmppMonad a -> IO (a, Stream)
-runXmppMonad' s = flip runStateT s . unXmppMonad 
+runXmppMonad' s = flip runStateT s . unXmppMonad
 
 --------------------------------------------------------------------------------
 -- | Jabber ID (JID) datatype
@@ -346,7 +346,7 @@ type family DataByPurpose (p :: StanzaPurpose) body where
 data Stanza :: StanzaType -> StanzaPurpose -> * -> * where
     MkMessage ::
         { mFrom    :: Maybe SomeJID
-        , mTo      :: SomeJID
+        , mTo      :: Maybe SomeJID
         , mId      :: T.Text          -- ^ Message 'from', 'to', 'id' attributes
         , mType    :: MessageType     -- ^ Message type (2.1.1)
         , mSubject :: T.Text          -- ^ Subject element (2.1.2.1)

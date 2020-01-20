@@ -19,7 +19,7 @@ module Network.XMPP.XEP.MUC
 ( createRoomStanza, leaveRoomStanza, destroyRoomStanza
 , roomMessageStanza, privateMessageStanza, queryInstantRoomConfigStanza
 , queryForAssociatedServicesStanza, submitInstantRoomConfigStanza
-, setRoomMembersListStanza
+, setRoomMembersListStanza, queryForRoomInfoStanza
 , UserJID, RoomJID, RoomMemberJID, FromXML(..), MUCPayload(..), RoomMembersList(..)
 , Affiliation(..)
 )
@@ -34,6 +34,7 @@ import           Text.XML.HaXml.Xtract.Parse (xtract)
 
 import           Network.XMPP.Types
 import           Network.XMPP.XML
+import           Network.XMPP.Stanza
 import           Network.XMPP.XEP.Form
 
 type UserJID = JID 'NodeResource       -- fully qualified user JID in Jabber: for example - JohnWick@localhost/riskbook-web
@@ -52,6 +53,17 @@ queryForAssociatedServicesStanza from srv uuid =
     , iqPurpose = SOutgoing
     }
 
+queryForRoomInfoStanza :: UserJID -> RoomJID -> UUID.UUID -> Stanza 'IQ 'Outgoing MUCPayload
+queryForRoomInfoStanza from room uuid =
+  MkIQ
+    { iqFrom = Just $ SomeJID from
+    , iqTo   = Just $ SomeJID room
+    , iqId   = UUID.toText uuid
+    , iqType = Get
+    , iqBody = [xml|<query xmlns="http://jabber.org/protocol/disco#info">|]
+    , iqPurpose = SOutgoing
+    }
+
 createRoomStanza :: UserJID -> UserJID -> UUID.UUID -> Stanza 'Presence 'Outgoing MUCPayload
 createRoomStanza who room uuid =
   MkPresence
@@ -66,11 +78,11 @@ createRoomStanza who room uuid =
     , pPurpose = SOutgoing
     }
 
-leaveRoomStanza :: JID 'NodeResource -> UUID.UUID -> Stanza 'Presence 'Outgoing MUCPayload
-leaveRoomStanza jid uuid =
+leaveRoomStanza :: UserJID -> RoomMemberJID -> UUID.UUID -> Stanza 'Presence 'Outgoing MUCPayload
+leaveRoomStanza user member uuid =
   MkPresence
-    { pFrom     = Nothing
-    , pTo       = Just $ SomeJID jid
+    { pFrom     = Just $ SomeJID user
+    , pTo       = Just $ SomeJID member
     , pId       = UUID.toText uuid
     , pType     = Unavailable
     , pShowType = Available
@@ -104,7 +116,7 @@ privateMessageStanza
 privateMessageStanza from to msg uuid = 
   MkMessage
     { mFrom    = Just $ SomeJID from
-    , mTo      = SomeJID to
+    , mTo      = Just $ SomeJID to
     , mId      = UUID.toText uuid
     , mType    = Chat
     , mSubject = ""
@@ -123,7 +135,7 @@ roomMessageStanza
 roomMessageStanza from to msg uuid =
   MkMessage
     { mFrom    = Just $ SomeJID from
-    , mTo      = SomeJID to
+    , mTo      = Just $ SomeJID to
     , mId      = UUID.toText uuid
     , mType    = GroupChat
     , mSubject = ""
@@ -188,9 +200,16 @@ data MUCPayload =
     MUCRoomCreated Affiliation Role
   | MUCRoomQuery XmppForm
   | MUCRoomConfigRejected
+  | MUCNotFound T.Text
   | MUCMembersPresences Affiliation Role
-  | MUCDelay RoomJID UTCTime
-  deriving (Eq, Show)
+  | MUCMessageId T.Text
+  | MUCArchivedMessage
+    { mamMessage  :: Stanza 'Message 'Incoming ()
+    , mamFrom     :: JID 'Domain
+    , mamWhen     :: UTCTime
+    , mamStoredId :: T.Text
+    }
+  deriving (Show)
 
 newtype RoomMembersList = RoomMembersList [(UserJID, Affiliation)]
   deriving (Eq, Show)
@@ -209,22 +228,34 @@ instance FromXML MUCPayload where
     = MUCRoomCreated
       <$> parseAffiliation (txtpat "/x/item/@affiliation" m)
       <*> parseRole (txtpat "/x/item/@role" m)
-    | matchPatterns m ["/iq/query/x"]
-    = MUCRoomQuery <$> (listToMaybe (xtract id "/iq/query/x" m) >>= decodeXml)
+    | matchPatterns m ["/query/x"]
+    = MUCRoomQuery <$> (listToMaybe (xtract id "/query/x" m) >>= decodeXml)
     | matchPatterns
       m
-      [ "/iq/query/[@type='cancel]"
-      , "/iq/query/[@xmlns='http://jabber.org/protocol/muc#owner']"
+      ["/error[@code='404']", "/error[@type='cancel']", "/error/item-not-found"]
+    = Just $ MUCNotFound $ txtpat "/error/text/-" m
+    | matchPatterns
+      m
+      [ "/query[@type='cancel]"
+      , "/query[@xmlns='http://jabber.org/protocol/muc#owner']"
       ]
     = Just MUCRoomConfigRejected
     | matchPatterns m ["/x/item/@affiliation", "/x/item/@role"]
     = MUCMembersPresences
-        <$> parseAffiliation (txtpat "/x/item/@affiliation" m)
-        <*> parseRole (txtpat "/x/item/@role" m)
-    | matchPatterns m ["/delay/@from", "/delay/@stamp"]
-    = MUCDelay
-        <$> mread (txtpat "/delay/@from" m)
-        <*> mread (T.replace "T" " " $ txtpat "/delay/@stamp" m)
+      <$> parseAffiliation (txtpat "/x/item/@affiliation" m)
+      <*> parseRole (txtpat "/x/item/@role" m)
+    | matchPatterns m ["/result", "/result/forwarded/message"]
+    = let
+        mMsg =
+          listToMaybe (xtract id "/result/forwarded/message" m) >>= decodeStanza
+        mFrom = mread $ txtpat "/result/forwarded/delay/@from" m
+        mTime =
+          mread $ T.replace "T" " " $ txtpat "/result/forwarded/delay/@stamp" m
+        storedId = txtpat "/result/forwarded/message/stanza-id/@id" m
+      in
+        MUCArchivedMessage <$> mMsg <*> mFrom <*> mTime <*> Just storedId
+    | matchPatterns m ["/stanza-id/@id"]
+    = Just $ MUCMessageId $ txtpat "/stanza-id/@id" m
     | otherwise
     = Nothing
 
