@@ -19,7 +19,7 @@ module Network.XMPP.XEP.MUC
 ( createRoomStanza, leaveRoomStanza, destroyRoomStanza
 , roomMessageStanza, privateMessageStanza, queryInstantRoomConfigStanza
 , queryForAssociatedServicesStanza, submitInstantRoomConfigStanza
-, setRoomMembersListStanza
+, setRoomMembersListStanza, queryForRoomInfoStanza
 , UserJID, RoomJID, RoomMemberJID, FromXML(..), MUCPayload(..), RoomMembersList(..)
 , Affiliation(..)
 )
@@ -50,6 +50,17 @@ queryForAssociatedServicesStanza from srv uuid =
     , iqId   = UUID.toText uuid
     , iqType = Get
     , iqBody = [xml|<query xmlns='http://jabber.org/protocol/disco#items'/>|]
+    , iqPurpose = SOutgoing
+    }
+
+queryForRoomInfoStanza :: UserJID -> RoomJID -> UUID.UUID -> Stanza 'IQ 'Outgoing MUCPayload
+queryForRoomInfoStanza from room uuid =
+  MkIQ
+    { iqFrom = Just $ SomeJID from
+    , iqTo   = Just $ SomeJID room
+    , iqId   = UUID.toText uuid
+    , iqType = Get
+    , iqBody = [xml|<query xmlns="http://jabber.org/protocol/disco#info">|]
     , iqPurpose = SOutgoing
     }
 
@@ -189,6 +200,7 @@ data MUCPayload =
     MUCRoomCreated Affiliation Role
   | MUCRoomQuery XmppForm
   | MUCRoomConfigRejected
+  | MUCNotFound T.Text
   | MUCMembersPresences Affiliation Role
   | MUCMessageId T.Text
   | MUCArchivedMessage
@@ -220,8 +232,12 @@ instance FromXML MUCPayload where
     = MUCRoomQuery <$> (listToMaybe (xtract id "/query/x" m) >>= decodeXml)
     | matchPatterns
       m
-      [ "/query/[@type='cancel]"
-      , "/query/[@xmlns='http://jabber.org/protocol/muc#owner']"
+      ["/error[@code='404']", "/error[@type='cancel']", "/error/item-not-found"]
+    = Just $ MUCNotFound $ txtpat "/error/text/-" m
+    | matchPatterns
+      m
+      [ "/query[@type='cancel]"
+      , "/query[@xmlns='http://jabber.org/protocol/muc#owner']"
       ]
     = Just MUCRoomConfigRejected
     | matchPatterns m ["/x/item/@affiliation", "/x/item/@role"]
@@ -229,14 +245,19 @@ instance FromXML MUCPayload where
       <$> parseAffiliation (txtpat "/x/item/@affiliation" m)
       <*> parseRole (txtpat "/x/item/@role" m)
     | matchPatterns m ["/result", "/result/forwarded/message"]
-    = 
-      let mMsg = listToMaybe (xtract id "/result/forwarded/message" m) >>= decodeStanza
-          mFrom = mread $ txtpat "/result/forwarded/delay/@from" m
-          mTime = mread $ T.replace "T" " " $ txtpat "/result/forwarded/delay/@stamp" m
-          storedId = txtpat "/result/forwarded/message/stanza-id/@id" m
-      in MUCArchivedMessage <$> mMsg <*> mFrom <*> mTime <*> Just storedId
-    | matchPatterns m ["/stanza-id/@id"] = Just $ MUCMessageId $ txtpat "/stanza-id/@id" m
-    | otherwise = Nothing
+    = let
+        mMsg =
+          listToMaybe (xtract id "/result/forwarded/message" m) >>= decodeStanza
+        mFrom = mread $ txtpat "/result/forwarded/delay/@from" m
+        mTime =
+          mread $ T.replace "T" " " $ txtpat "/result/forwarded/delay/@stamp" m
+        storedId = txtpat "/result/forwarded/message/stanza-id/@id" m
+      in
+        MUCArchivedMessage <$> mMsg <*> mFrom <*> mTime <*> Just storedId
+    | matchPatterns m ["/stanza-id/@id"]
+    = Just $ MUCMessageId $ txtpat "/stanza-id/@id" m
+    | otherwise
+    = Nothing
 
 encodeAffiliation :: Affiliation -> T.Text
 encodeAffiliation OwnerAffiliation   = "owner"
