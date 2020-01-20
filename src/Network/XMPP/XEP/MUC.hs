@@ -190,7 +190,7 @@ data MUCPayload =
   | MUCRoomQuery XmppForm
   | MUCRoomConfigRejected
   | MUCMembersPresences Affiliation Role
-  | MUCDelay RoomJID UTCTime
+  | MUCMessageId T.Text
   | MUCArchivedMessage
     { mamMessage  :: Stanza 'Message 'Incoming ()
     , mamFrom     :: JID 'Domain
@@ -228,9 +228,6 @@ instance FromXML MUCPayload where
     = MUCMembersPresences
       <$> parseAffiliation (txtpat "/x/item/@affiliation" m)
       <*> parseRole (txtpat "/x/item/@role" m)
-    | matchPatterns m ["/delay/@from", "/delay/@stamp"]
-    = MUCDelay <$> mread (txtpat "/delay/@from" m) <*> mread
-      (T.replace "T" " " $ txtpat "/delay/@stamp" m)
     | matchPatterns m ["/result", "/result/forwarded/message"]
     = 
       let mMsg = listToMaybe (xtract id "/result/forwarded/message" m) >>= decodeStanza
@@ -238,8 +235,8 @@ instance FromXML MUCPayload where
           mTime = mread $ T.replace "T" " " $ txtpat "/result/forwarded/delay/@stamp" m
           storedId = txtpat "/result/forwarded/message/stanza-id/@id" m
       in MUCArchivedMessage <$> mMsg <*> mFrom <*> mTime <*> Just storedId
-    | otherwise
-    = Nothing
+    | matchPatterns m ["/stanza-id/@id"] = Just $ MUCMessageId $ txtpat "/stanza-id/@id" m
+    | otherwise = Nothing
 
 encodeAffiliation :: Affiliation -> T.Text
 encodeAffiliation OwnerAffiliation   = "owner"
