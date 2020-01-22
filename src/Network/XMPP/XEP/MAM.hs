@@ -94,7 +94,7 @@ data MAMPayload = MAMFinalPayload
 
 instance FromXML MAMPayload where
   decodeXml m
-    | matchPatterns m ["/fin/set/first", "/fin/set/last", "/fin/set/count"]
+    | matchPatterns m ["/fin@complete", "/fin/set/count"]
     = MAMFinalPayload
       <$> decodeBool (txtpat "/fin/@complete" m)
       <*> Just (txtpat "/fin/set/last/-" m)
