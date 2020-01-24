@@ -94,12 +94,12 @@ data MAMPayload = MAMFinalPayload
 
 instance FromXML MAMPayload where
   decodeXml m
-    | matchPatterns m ["/fin@complete", "/fin/set/count"]
+    | matchPatterns m ["/fin/@complete", "/fin/set/count"]
     = MAMFinalPayload
-      <$> decodeBool (txtpat "/fin@complete" m)
+      <$> decodeBool (txtpat "/fin/@complete" m)
       <*> Just (txtpat "/fin/set/last/-" m)
       <*> Just (txtpat "/fin/set/first/-" m)
-      <*> Just (txtpat "/fin/set/first/@index" m)
+      <*> Just (txtpat "/fin/set/first@index" m)
       <*> mread (txtpat "/fin/set/count/-" m)
     | otherwise
     = Nothing
