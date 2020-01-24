@@ -31,11 +31,11 @@ module Network.XMPP.Stream
 
 import           Control.Monad                (void)
 import           Control.Monad.State          (MonadState(..), gets, modify)
-import           Control.Monad.Except         
+import           Control.Monad.Except         (runExceptT, throwError, lift)
 import           Control.Monad.IO.Class       (MonadIO(..))
 import           Control.Applicative          (Alternative, empty, pure)
 import           System.IO                    (Handle, hGetContents)
-import           Data.Text                    (Text, unpack, pack)
+import           Data.Text                    (Text, unpack, pack, intercalate)
 import qualified Data.UUID.V4                 as UUID
 import qualified Data.UUID                    as UUID
 import           Data.Functor                 (($>))
@@ -107,7 +107,9 @@ nextM = do
   ls <- gets lexemes
   let (elem, rest) = xmlParseWith element ls
   case elem of
-    Left  err -> pure $ Left $ "Failed to parse next element: " <> pack (show err)
+    Left  err ->
+      let log = ["Failed to parse next element:", pack (show err), ", msg:", pack (show ls)]
+      in pure $ Left $ intercalate " " log
     Right e   -> do
       let msg = CElem e noPos
       debug $ "nextM: Got element: " ++ show (P.content msg)
