@@ -44,7 +44,7 @@ type XmppThreadT a e = ReaderT (Thread e) IO a
 
 -- Two streams: input and output. Threads read from input stream and write to output stream.
 -- | Runs thread in XmppState monad
-runThreaded :: FromXML e => XmppThreadT () e -> XmppMonad ()
+runThreaded :: FromXML e => XmppThreadT () e -> XmppMonad IO ()
 runThreaded a = do
   in' <- liftIO $ atomically newTChan
   out' <- liftIO $ atomically newTChan

@@ -26,6 +26,7 @@ import Network.XMPP.Stream
 import Network.XMPP.Concurrent
 import Text.XML (Node)
 import qualified Data.Text as T
+import Control.Monad.IO.Class
 
 import Text.XML.HaXml
 import Text.XML.HaXml.Posn
@@ -34,10 +35,11 @@ noelem :: Content Posn
 noelem = CElem (Elem (N "root") [] []) noPos
 
 -- | Send IQ of specified type with supplied data
-iqSend :: T.Text -- ^ ID to use
+iqSend :: MonadIO m
+       => T.Text -- ^ ID to use
        -> IQType -- ^ IQ type
        -> [Node] -- ^ request contents
-       -> XmppMonad ()
+       -> XmppMonad m ()
 iqSend id t body = xmppSend $ MkIQ Nothing Nothing id t body SOutgoing
 
 -- Extract IQ reply that matches the supplied predicate from the event stream and send it (transformed)        

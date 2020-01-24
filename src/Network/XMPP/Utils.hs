@@ -15,10 +15,10 @@
 
 module Network.XMPP.Utils ( debug, debugIO ) where
 
-import           Control.Monad.IO.Class          (liftIO)
+import           Control.Monad.IO.Class          (MonadIO, liftIO)
 import           Network.XMPP.Types
 
-debug :: String -> XmppMonad ()
+debug :: MonadIO m => String -> XmppMonad m ()
 debugIO :: String -> IO ()
 #ifdef DEBUG
 debug = liftIO . putStrLn

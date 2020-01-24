@@ -24,7 +24,7 @@ module Network.XMPP.Core
 import Control.Monad        (void)
 import System.IO            (Handle, hSetBuffering, BufferMode(..))
 import Control.Monad.Except (throwError, runExceptT, lift)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class (liftIO, MonadIO)
 
 import Data.Text            (Text, unpack)
 import Text.Hamlet.XML      (xml)
@@ -41,12 +41,12 @@ import Network.XMPP.Stream  (resetStreamHandle, XmppSendable(..),
                              xtractM, textractM, startM)
 
 -- | Open connection to specified server and return `Stream' coming from it
-initStream :: Handle
+initStream :: MonadIO m => Handle
                -> Server -- ^ Server (hostname) we are connecting to
                -> Username -- ^ Username to use
                -> Password -- ^ Password to use
                -> Resource -- ^ Resource to use
-               -> XmppMonad (Either Text (JID 'NodeResource))
+               -> XmppMonad m (Either Text (JID 'NodeResource))
 initStream h server username password resrc = runExceptT $
   do liftIO $ hSetBuffering h NoBuffering
      resetStreamHandle h
@@ -90,5 +90,5 @@ initStream h server username password resrc = runExceptT $
 
      return $ read $ unpack my_jid
 
-closeStream :: XmppMonad ()
+closeStream :: MonadIO m => XmppMonad m ()
 closeStream = xmppSend $ head $ streamEnd noelem

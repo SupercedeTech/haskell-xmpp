@@ -20,6 +20,7 @@ module Network.XMPP.Sasl
   ) where
 
 import           Control.Monad                     (unless, join)
+import           Control.Monad.IO.Class
 import           Control.Monad.Except              (throwError, runExceptT,
                                                     liftIO, lift, ExceptT(..))
 import           Data.Char                         (chr, ord)
@@ -36,11 +37,12 @@ import           Network.XMPP.Stream
 import           Network.XMPP.Types
 
 -- | Perform authentication over already-open channel
-saslAuth :: [T.Text] -- ^ List of auth mechanism available from server, currently only "DIGEST-MD5" is supported
+saslAuth :: MonadIO m
+         => [T.Text] -- ^ List of auth mechanism available from server, currently only "DIGEST-MD5" is supported
          -> T.Text   -- ^ Server we are connectint to (hostname)
          -> T.Text   -- ^ Username to connect as
          -> T.Text   -- ^ Password
-         -> XmppMonad (Either T.Text ())
+         -> XmppMonad m (Either T.Text ())
 saslAuth mechanisms server username password
   | "DIGEST-MD5" `elem` mechanisms = saslDigest server username password
   | otherwise
@@ -50,7 +52,7 @@ saslAuth mechanisms server username password
     $  "Dont know how to do auth! Available mechanisms are: "
     ++ show mechanisms
 
-saslDigest :: T.Text -> T.Text -> T.Text -> XmppMonad (Either T.Text ())
+saslDigest :: MonadIO m => T.Text -> T.Text -> T.Text -> XmppMonad m (Either T.Text ())
 saslDigest server username password = runExceptT $ do
   lift $ xmppSend $ head auth
   ch_text <- (join <$> lift (withNextM getChallenge)) >>= either throwError pure
@@ -124,7 +126,7 @@ getPairs str =
                   x@('\"':_) -> read x
                   x          -> x
 
-saslDigestRspAuth :: T.Text -> XmppMonad (Either T.Text ())
+saslDigestRspAuth :: MonadIO m => T.Text -> XmppMonad m (Either T.Text ())
 saslDigestRspAuth chl =
   let pairs = getPairs $ B64.decode $ T.unpack chl
   in  case lookup "rspauth" pairs of

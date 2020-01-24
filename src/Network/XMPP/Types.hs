@@ -66,15 +66,15 @@ data Stream
     , lexemes :: [Token] -- ^ Stream of the lexemes coming from server
     }
 
-newtype XmppMonad a
-    = XmppMonad { unXmppMonad :: StateT Stream IO a }
+newtype XmppMonad m a
+    = XmppMonad { unXmppMonad :: StateT Stream m a }
     deriving (Functor, Applicative, Monad, MonadIO, MonadState Stream)
 
-runXmppMonad :: XmppMonad a -> IO (a, Stream)
+runXmppMonad :: MonadIO m => XmppMonad m a -> m (a, Stream)
 runXmppMonad = flip runStateT newStream . unXmppMonad
   where newStream = Stream { handle = stdin, idx = 0, lexemes = [] }
 
-runXmppMonad' :: Stream -> XmppMonad a -> IO (a, Stream)
+runXmppMonad' :: MonadIO m => Stream -> XmppMonad m a -> m (a, Stream)
 runXmppMonad' s = flip runStateT s . unXmppMonad
 
 --------------------------------------------------------------------------------
