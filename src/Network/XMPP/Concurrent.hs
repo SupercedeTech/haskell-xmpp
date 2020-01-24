@@ -1,4 +1,5 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs             #-}
+{-# LANGUAGE OverloadedStrings #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.XMPP.Concurrent
@@ -51,10 +52,13 @@ runThreaded a = do
   s <- get
   void $ liftIO $ forkIO $ loopWrite s out'
   void $ liftIO $ forkIO $ connPersist $ handle s
-  loopRead in' 
+  loopRead in'
     where 
-      loopRead in' = loop $ 
-        parseM >>= liftIO . atomically . writeTChan in'
+      loopRead in' = loop $ do
+        eiMsg <- parseM
+        case eiMsg of
+          Right m -> liftIO . atomically . writeTChan in' $ m
+          Left err -> liftIO $ print $ "Error in thread: " <> err
       loopWrite s out' =
         void $ runXmppMonad $ do
           put s
@@ -66,7 +70,7 @@ runThreaded a = do
                 SomeStanza stnz@MkIQ{ iqPurpose = SOutgoing }      -> xmppSend stnz
                 _                            -> pure () -- Won't happen, but we gotta make compiler happy
       loop = sequence_ . repeat
-       
+
 readChanS :: XmppThreadT (SomeStanza e) e
 readChanS =
   asks inCh >>= liftIO . atomically . readTChan
