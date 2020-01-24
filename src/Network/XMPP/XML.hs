@@ -44,7 +44,7 @@ instance (FromXML a, FromXML b) => FromXML (Either a b) where
 strAttr :: a -> String -> (a, CFilter i)
 strAttr s d = (s, literal d)
 
--- | Returns strings extracted by xtract query 
+-- | Returns strings extracted by xtract query
 getVals :: Text -> [Content Posn] -> [Text]
 getVals q = map (getText_ . xtract id (unpack q))
 
@@ -55,9 +55,12 @@ isVal str cont = any (== str) . getVals cont
 
 -- 
 getText :: Content i -> Text
-getText cs@CString{}  = pack . render . P.content $ cs
-getText cs@CRef{}     = pack . render . P.content $ cs
-getText x               = error $ "Attempt to extract text from content that is not a string: " ++ render ( P.content x )
+getText cs@CString{} = pack . render . P.content $ cs
+getText cs@CRef{}    = pack . render . P.content $ cs
+getText x =
+  error
+    $  "Attempt to extract text from content that is not a string: "
+    ++ render (P.content x)
 
 getText_ :: [Content i] -> Text
 getText_ = pack . render . hcat . map P.content

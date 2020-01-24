@@ -23,9 +23,10 @@ module Network.XMPP.Core
 
 import Control.Monad        (void)
 import System.IO            (Handle, hSetBuffering, BufferMode(..))
+import Control.Monad.Except (throwError, runExceptT, lift)
 import Control.Monad.IO.Class (liftIO)
 
-import Data.Text            (unpack)
+import Data.Text            (Text, unpack)
 import Text.Hamlet.XML      (xml)
 
 import Network.XMPP.Utils   (debug)
@@ -34,9 +35,10 @@ import Network.XMPP.IQ      (iqSend)
 import Network.XMPP.Print   (stream, streamEnd)
 import Network.XMPP.XML     (noelem, lookupAttr, getText)
 import Network.XMPP.Types   (Server, Username, Password, Resource, XmppMonad,
-                             JID(..), JIDQualification(..), StreamType(..), IQType(..))
+                             JID(..), JIDQualification(..), StreamType(..),
+                             IQType(..))
 import Network.XMPP.Stream  (resetStreamHandle, XmppSendable(..),
-                             xtractM, textractM, startM,)
+                             xtractM, textractM, startM)
 
 -- | Open connection to specified server and return `Stream' coming from it
 initStream :: Handle
@@ -44,48 +46,47 @@ initStream :: Handle
                -> Username -- ^ Username to use
                -> Password -- ^ Password to use
                -> Resource -- ^ Resource to use
-               -> XmppMonad (JID 'NodeResource)
-initStream h server username password resrc =
+               -> XmppMonad (Either Text (JID 'NodeResource))
+initStream h server username password resrc = runExceptT $
   do liftIO $ hSetBuffering h NoBuffering
      resetStreamHandle h
-     xmppSend $ head $ stream Client server noelem
-     attrs <- startM
+     lift $ xmppSend $ head $ stream Client server noelem
+     attrs <- lift startM >>= either throwError pure
+
      case lookupAttr "version" attrs of
         Just "1.0" -> return ()
-        Nothing ->
-          -- TODO: JEP 0078
-          -- in case of absent of version we wont process stream:features
-          error "No version"
-        _ -> error "unknown version"
+        -- TODO: JEP 0078 in case of absent of version we wont process stream:features
+        Nothing -> throwError "No version"
+        _ -> throwError "unknown version"
      
-     debug "Stream started"
+     lift $ debug "Stream started"
      --debug $ "Observing: " ++ render (P.content m)
-     m <- xtractM "/stream:features/mechanisms/mechanism/-"
+     m <- lift $ xtractM "/stream:features/mechanisms/mechanism/-"
      let mechs = getText <$> m
-     debug $ "Mechanisms: " ++ show mechs
+     lift $ debug $ "Mechanisms: " ++ show mechs
 
      -- Handle the authentication
-     saslAuth mechs server username password
+     lift (saslAuth mechs server username password) >>= either throwError pure
 
-     xmppSend $ head $ stream Client server noelem
+     lift $ xmppSend $ head $ stream Client server noelem
 
-     void startM
+     void $ lift startM >>= either throwError pure
 
      -- Bind this session to resource
-     void $ xtractM "/stream:features/bind" -- `catch` (fail "Binding is not proposed")
+     lift $ void $ xtractM "/stream:features/bind" -- `catch` (fail "Binding is not proposed")
 
-     iqSend "bind1" Set 
+     lift $ iqSend "bind1" Set 
                   [xml|
                     <bind xmlns="urn:ietf:params:xml:ns:xmpp-bind">
                       <resource>#{resrc}
                   |]
                 
-     my_jid <- textractM "/iq[@type='result' & @id='bind1']/bind/jid/-"
+     my_jid <- lift $ textractM "/iq[@type='result' & @id='bind1']/bind/jid/-"
 
-     iqSend "session1" Set 
+     lift $ iqSend "session1" Set 
                 [xml| <session xmlns="urn:ietf:params:xml:ns:xmpp-session"> |]
 
-     void $ xtractM "/iq[@type='result' & @id='session1']" -- (error "Session binding failed")
+     lift $ void $ xtractM "/iq[@type='result' & @id='session1']" -- (error "Session binding failed")
 
      return $ read $ unpack my_jid
 
