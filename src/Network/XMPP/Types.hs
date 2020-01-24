@@ -37,9 +37,10 @@ where
 
 import System.IO              (Handle, stdin)
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans    (MonadTrans)
 import Control.Monad.State    (MonadState, StateT, runStateT)
-import qualified Data.Text as T
 import Data.Maybe             (maybeToList)
+import qualified Data.Text as T
 
 import Text.Blaze             (ToMarkup (toMarkup))
 import Text.Regex
@@ -68,7 +69,7 @@ data Stream
 
 newtype XmppMonad m a
     = XmppMonad { unXmppMonad :: StateT Stream m a }
-    deriving (Functor, Applicative, Monad, MonadIO, MonadState Stream)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadState Stream, MonadTrans)
 
 runXmppMonad :: MonadIO m => XmppMonad m a -> m (a, Stream)
 runXmppMonad = flip runStateT newStream . unXmppMonad
