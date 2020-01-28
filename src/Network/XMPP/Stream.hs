@@ -21,6 +21,7 @@
 module Network.XMPP.Stream
   ( XmppSendable(..)
   , Plugin(..)
+  , XmppError(..)
   , startM, nextM, withNextM, selectM, xtractM, textractM, withSelectM
   , resetStreamHandle, getText, getText_
   , loopWithPlugins
@@ -35,7 +36,7 @@ import           Control.Monad.Except         (runExceptT, throwError, lift)
 import           Control.Monad.IO.Class       (MonadIO(..))
 import           Control.Applicative          (Alternative, empty, pure)
 import           System.IO                    (Handle, hGetContents)
-import           Data.Text                    (Text, unpack, pack, intercalate)
+import           Data.Text                    (Text, unpack, pack)
 import qualified Data.UUID.V4                 as UUID
 import qualified Data.UUID                    as UUID
 import           Data.Functor                 (($>))
@@ -74,6 +75,15 @@ instance XmppSendable (Content Posn) where
 instance XmppSendable (Stanza t 'Outgoing e) where
   xmppSend s = xmppSend (encodeStanza s :: Node)
 
+data XmppError =
+    StreamClosedError
+  | MessageParseError Text Text
+  | NonSupportedAuthMechanisms [Text] Text
+  | AuthError Text
+  | UnknownVersion Text
+  | UnknownError Text
+  deriving (Eq, Show)
+
 -- | Parses XML element producing Stanza
 parse :: forall l e. (Alternative l, FromXML e) => Content Posn -> l (SomeStanza e)
 parse m | xtractp id "/message" m  = mSucceed (decodeStanza m :: Maybe (Stanza 'Message 'Incoming e))
@@ -86,7 +96,7 @@ parse m | xtractp id "/message" m  = mSucceed (decodeStanza m :: Maybe (Stanza '
 
 -- | Gets next message from stream and parses it
 -- | We shall skip over unknown messages, rather than crashing
-parseM :: (FromXML e, MonadIO m) => XmppMonad m (Either Text (SomeStanza e))
+parseM :: (FromXML e, MonadIO m) => XmppMonad m (Either XmppError (SomeStanza e))
 parseM = (fmap parse <$> nextM) >>= \case
   Right m -> maybe parseM (pure . Right) m
   Left  e -> pure $ Left e
@@ -96,40 +106,39 @@ parseM = (fmap parse <$> nextM) >>= \case
 waitAndProcess
   :: (FromXML e, MonadIO m)
   => (SomeStanza e -> Maybe a)
-  -> XmppMonad m (Either Text a)
+  -> XmppMonad m (Either XmppError a)
 waitAndProcess compute = parseM >>= \case
   Right m   -> maybe (waitAndProcess compute) (pure . Right) $ compute m
   Left  err -> pure $ Left err
-
 
 withUUID :: MonadIO m => (UUID.UUID -> Stanza t p e) -> m (Stanza t p e)
 withUUID setUUID = setUUID <$> liftIO UUID.nextRandom
 
 -- | Selects next messages from stream
-nextM :: MonadIO m => XmppMonad m (Either Text (Content Posn))
-nextM = do
-  ls <- gets lexemes
-  let (elem, rest) = xmlParseWith element ls
-  case elem of
-    Left err ->
-      let log =
-              [ "Failed to parse next element:"
-              , pack (show err)
-              , ", msg:"
-              , pack (show ls)
-              ]
-      in  pure $ Left $ intercalate " " log
-    Right e -> do
-      let msg = CElem e noPos
-      debug $ "nextM: Got element: " ++ show (P.content msg)
+nextM :: MonadIO m => XmppMonad m (Either XmppError (Content Posn))
+nextM = runExceptT $ do
+  ls <- lift $ gets lexemes
+
+  case xmlParseWith (elemCloseTag $ N "stream:stream") ls of
+    (Right (), rest) -> do
       modify (\stream -> stream { lexemes = rest })
-      pure $ Right msg
+      throwError StreamClosedError -- all subsequent queries will end by EOF exception
+    _ -> case xmlParseWith element ls of
+      (Right e, rest) -> do
+        let msg = CElem e noPos
+        lift $ debug $ "nextM: Got element: " ++ show (P.content msg)
+        modify (\stream -> stream { lexemes = rest }) $> msg
+      (Left err, _) ->
+        throwError $ MessageParseError (pack $ show ls) $ pack $ show err
 
 -- | Selects next message matching predicate
-selectM :: MonadIO m => (Content Posn -> Bool) -> XmppMonad m (Either Text (Content Posn))
+selectM
+  :: MonadIO m
+  => (Content Posn -> Bool)
+  -> XmppMonad m (Either XmppError (Content Posn))
 selectM p = runExceptT $ do
   m <- lift nextM >>= either throwError pure
-  if p m then pure m else throwError "Failed to select message"
+  if p m then pure m else throwError $ UnknownError "Failed to select message"
 
 -- | Pass in xtract query, return query result from the first message where it returns non-empty results
 xtractM :: MonadIO m => Text -> XmppMonad m [Content Posn]
@@ -146,29 +155,29 @@ textractM q = do
     [] -> ""
     x  -> getText_ x
 
-withNextM :: MonadIO m => (Content Posn -> b) -> XmppMonad m (Either Text b)
+withNextM :: MonadIO m => (Content Posn -> b) -> XmppMonad m (Either XmppError b)
 withNextM compute = fmap compute <$> nextM
 
 withSelectM
   :: MonadIO m
   => (Content Posn -> Bool)
   -> (Content Posn -> b)
-  -> XmppMonad m (Either Text b)
+  -> XmppMonad m (Either XmppError b)
 withSelectM predicate compute =
   selectM predicate >>= either (pure . Left) (pure . Right . compute)
 
 
 -- | startM is a special accessor case, since it has to retrieve only opening tag of the '<stream>' message,
 -- which encloses the whole XMPP stream. That's why it does it's own parsing, and does not rely on 'nextM'
-startM :: MonadIO m => XmppMonad m (Either Text [Attribute])
+startM :: MonadIO m => XmppMonad m (Either XmppError [Attribute])
 startM = do
   (starter, rest) <- xmlParseWith streamStart <$> gets lexemes
   case starter of
-    Left e -> pure $ Left $ pack e
+    Left e -> pure $ Left $ UnknownError $ pack e
     Right (ElemTag (N "stream:stream") attrs) ->
       modify (\stream -> stream { lexemes = rest }) $> Right attrs
     Right _ ->
-      pure $ Left "Unexpected element at the beginning of XMPP stream!"
+      pure $ Left $ UnknownError "Unexpected element at the beginning of XMPP stream!"
  where
   streamStart = void processinginstruction `onFail` return () >> elemOpenTag
 

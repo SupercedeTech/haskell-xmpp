@@ -42,17 +42,16 @@ saslAuth :: MonadIO m
          -> T.Text   -- ^ Server we are connectint to (hostname)
          -> T.Text   -- ^ Username to connect as
          -> T.Text   -- ^ Password
-         -> XmppMonad m (Either T.Text ())
+         -> XmppMonad m (Either XmppError ())
 saslAuth mechanisms server username password
-  | "DIGEST-MD5" `elem` mechanisms = saslDigest server username password
+  | "DIGEST-MD5" `elem` mechanisms
+  = saslDigest server username password
   | otherwise
-  = pure
-    $  Left
-    $  T.pack
-    $  "Dont know how to do auth! Available mechanisms are: "
-    ++ show mechanisms
+  = let mechs = T.pack . show <$> mechanisms
+    in  pure $ Left $ NonSupportedAuthMechanisms mechs "DIGEST-MD5"
 
-saslDigest :: MonadIO m => T.Text -> T.Text -> T.Text -> XmppMonad m (Either T.Text ())
+
+saslDigest :: MonadIO m => T.Text -> T.Text -> T.Text -> XmppMonad m (Either XmppError ())
 saslDigest server username password = runExceptT $ do
   lift $ xmppSend $ head auth
   ch_text <- (join <$> lift (withNextM getChallenge)) >>= either throwError pure
@@ -60,17 +59,13 @@ saslDigest server username password = runExceptT $ do
   lift $ xmppSend $ head $ response $ T.pack resp
   m <- lift nextM >>= either throwError pure
 
-  unless (null $ tag "failure" m) $ throwError $ "Auth failure: " <> T.pack
-    (show m)
+  unless (null $ tag "failure" m) $ throwError $ AuthError $ T.pack $ show m
 
   chl_text <- ExceptT . pure $ getChallenge m
   lift (saslDigestRspAuth chl_text) >>= either throwError pure
   lift $ xmppSend $ head sndResponse
   m <- lift nextM >>= either throwError pure
-  unless (not $ null $ tag "success" m)
-    $  throwError
-    $  "Auth failure: "
-    <> T.pack (show m)
+  unless (not $ null $ tag "success" m) $ throwError $ AuthError $ T.pack $ show m
 
   where
       auth = [xml|<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" mechanism="DIGEST-MD5">|]
@@ -81,7 +76,7 @@ saslDigest server username password = runExceptT $ do
       sndResponse = [xml|<response xmlns="urn:ietf:params:xml:ns:xmpp-sasl">|]
       getChallenge c =
           case (tag "challenge" /> txt) c of
-              [] -> Left "Where is challenge?"
+              [] -> Left $ AuthError "Where is challenge?"
               x  -> Right $ getText_ x
 
 saslDigestResponse :: T.Text -> T.Text -> T.Text -> T.Text -> IO String
@@ -126,9 +121,9 @@ getPairs str =
                   x@('\"':_) -> read x
                   x          -> x
 
-saslDigestRspAuth :: MonadIO m => T.Text -> XmppMonad m (Either T.Text ())
+saslDigestRspAuth :: MonadIO m => T.Text -> XmppMonad m (Either XmppError ())
 saslDigestRspAuth chl =
   let pairs = getPairs $ B64.decode $ T.unpack chl
   in  case lookup "rspauth" pairs of
         Just _  -> pure $ Right ()
-        Nothing -> pure $ Left "NO rspauth in SASL digest rspauth!"
+        Nothing -> pure $ Left $ AuthError "No rspauth in SASL digest rspauth!"
