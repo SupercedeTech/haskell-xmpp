@@ -26,7 +26,7 @@ import System.IO            (Handle, hSetBuffering, BufferMode(..))
 import Control.Monad.Except (throwError, runExceptT, lift)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 
-import Data.Text            (Text, unpack)
+import Data.Text            (unpack, pack)
 import Text.Hamlet.XML      (xml)
 
 import Network.XMPP.Utils   (debug)
@@ -37,7 +37,7 @@ import Network.XMPP.XML     (noelem, lookupAttr, getText)
 import Network.XMPP.Types   (Server, Username, Password, Resource, XmppMonad,
                              JID(..), JIDQualification(..), StreamType(..),
                              IQType(..))
-import Network.XMPP.Stream  (resetStreamHandle, XmppSendable(..),
+import Network.XMPP.Stream  (resetStreamHandle, XmppSendable(..), XmppError(..),
                              xtractM, textractM, startM)
 
 -- | Open connection to specified server and return `Stream' coming from it
@@ -46,7 +46,7 @@ initStream :: MonadIO m => Handle
                -> Username -- ^ Username to use
                -> Password -- ^ Password to use
                -> Resource -- ^ Resource to use
-               -> XmppMonad m (Either Text (JID 'NodeResource))
+               -> XmppMonad m (Either XmppError (JID 'NodeResource))
 initStream h server username password resrc = runExceptT $
   do liftIO $ hSetBuffering h NoBuffering
      resetStreamHandle h
@@ -56,8 +56,8 @@ initStream h server username password resrc = runExceptT $
      case lookupAttr "version" attrs of
         Just "1.0" -> return ()
         -- TODO: JEP 0078 in case of absent of version we wont process stream:features
-        Nothing -> throwError "No version"
-        _ -> throwError "unknown version"
+        Just ver -> throwError $ UnknownVersion $ pack ver
+        Nothing -> throwError $ UnknownVersion ""
      
      lift $ debug "Stream started"
      --debug $ "Observing: " ++ render (P.content m)

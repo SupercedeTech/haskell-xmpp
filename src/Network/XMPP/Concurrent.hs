@@ -58,7 +58,7 @@ runThreaded a = do
         eiMsg <- parseM
         case eiMsg of
           Right m -> liftIO . atomically . writeTChan in' $ m
-          Left err -> liftIO $ print $ "Error in thread: " <> err
+          Left err -> liftIO $ print $ "Error in thread: " <> show err
       loopWrite s out' =
         void $ runXmppMonad $ do
           put s
