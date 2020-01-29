@@ -45,14 +45,14 @@ iqSend id t body = xmppSend $ MkIQ Nothing Nothing id t body SOutgoing
 -- Extract IQ reply that matches the supplied predicate from the event stream and send it (transformed)        
 iqReplyTo :: (Stanza 'IQ 'Incoming e -> Bool) -- ^ Predicate used to match required IQ reply
           -> (Stanza 'IQ 'Incoming e -> [CFilter Posn]) -- ^ transformer function
-          -> XmppThreadT () e
+          -> XmppThreadT IO () e
 iqReplyTo p t = do
   s <- waitFor (\case
-            SomeStanza xiq@MkIQ{ iqPurpose = SIncoming } -> p xiq
+            Right (SomeStanza xiq@MkIQ{ iqPurpose = SIncoming }) -> p xiq
             _                     -> False)
   case s of
-    SomeStanza stnz@MkIQ{ iqPurpose = SIncoming } -> writeChanS $ SomeStanza $ transform t stnz
-    _                                             -> pure ()
+    Right (SomeStanza stnz@MkIQ{ iqPurpose = SIncoming }) -> writeChanS $ SomeStanza $ transform t stnz
+    _                                                     -> pure ()
     where
       transform :: (Stanza 'IQ 'Incoming e -> [CFilter Posn]) -> Stanza 'IQ 'Incoming e -> Stanza 'IQ 'Incoming e
       transform t s@(MkIQ from' to' id' _type' _body' SIncoming) =

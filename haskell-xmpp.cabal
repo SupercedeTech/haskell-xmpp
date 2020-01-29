@@ -55,6 +55,7 @@ library
                , blaze-markup
                , singletons
                , time
+               , unliftio
 
   Exposed-modules: Network.XMPP
                  , Network.XMPP.Sasl
