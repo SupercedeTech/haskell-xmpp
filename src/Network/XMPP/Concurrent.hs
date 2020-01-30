@@ -34,8 +34,7 @@ import Network.XMPP.Stream
 import Network.XMPP.Types
 import Network.XMPP.Utils
 import Network.XMPP.XML
-import Control.Exception.Safe
-import UnliftIO.Async          (Async, async, cancel)
+import UnliftIO.Async          (Async, async)
 import UnliftIO                (TChan, MonadUnliftIO, atomically, newTChan,
                                 writeTChan, readTChan, dupTChan)
 
@@ -51,19 +50,17 @@ type XmppThreadT m a e = ReaderT (Thread e) m a
 -- Two streams: input and output. Threads read from input stream and write to output stream.
 -- | Runs thread in XmppState monad
 runThreaded
-  :: (FromXML e, MonadIO m, MonadUnliftIO m, MonadMask m)
+  :: (FromXML e, MonadIO m, MonadUnliftIO m)
   => XmppThreadT m () e
   -> XmppMonad m ()
 runThreaded action = do
   (in', out')  <- atomically $ (,) <$> newTChan <*> newTChan
   s@Stream{..} <- get
-  (actionThread, writerThread, persisterThread) <- lift $
-    (,,)
-    <$> async (runReaderT action $ Thread in' out')
-    <*> async (void $ loopWrite s out')
-    <*> async (connPersist handle)
-  let finalize = mapM_ cancel [actionThread, writerThread, persisterThread]
-  loopRead in' `finally` finalize
+  void $ lift $
+    async (runReaderT action $ Thread in' out') >>
+    async (void $ loopWrite s out') >>
+    async (connPersist handle)
+  loopRead in'
  where
   loopRead in' = loop $ parseM >>= (atomically . writeTChan in')
   loopWrite s out' = runXmppMonad $ (put s >>) $ loop $
