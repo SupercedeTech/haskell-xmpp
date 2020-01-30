@@ -28,12 +28,6 @@ import Text.XML (Node)
 import qualified Data.Text as T
 import Control.Monad.IO.Class
 
-import Text.XML.HaXml
-import Text.XML.HaXml.Posn
-
-noelem :: Content Posn
-noelem = CElem (Elem (N "root") [] []) noPos
-
 -- | Send IQ of specified type with supplied data
 iqSend :: MonadIO m
        => T.Text -- ^ ID to use
@@ -44,7 +38,7 @@ iqSend id t body = xmppSend $ MkIQ Nothing Nothing id t body SOutgoing
 
 -- Extract IQ reply that matches the supplied predicate from the event stream and send it (transformed)        
 iqReplyTo :: (Stanza 'IQ 'Incoming e -> Bool) -- ^ Predicate used to match required IQ reply
-          -> (Stanza 'IQ 'Incoming e -> [CFilter Posn]) -- ^ transformer function
+          -> (Stanza 'IQ 'Incoming e -> [Node]) -- ^ transformer function
           -> XmppThreadT IO () e
 iqReplyTo p t = do
   s <- waitFor (\case
@@ -54,6 +48,6 @@ iqReplyTo p t = do
     Right (SomeStanza stnz@MkIQ{ iqPurpose = SIncoming }) -> writeChanS $ SomeStanza $ transform t stnz
     _                                                     -> pure ()
     where
-      transform :: (Stanza 'IQ 'Incoming e -> [CFilter Posn]) -> Stanza 'IQ 'Incoming e -> Stanza 'IQ 'Incoming e
+      transform :: (Stanza 'IQ 'Incoming e -> [Node]) -> Stanza 'IQ 'Incoming e -> Stanza 'IQ 'Outgoing ()
       transform t s@(MkIQ from' to' id' _type' _body' SIncoming) =
-          MkIQ to' from' id' Result (Left $ map (head . ($noelem)) $ t s) SIncoming
+          MkIQ to' from' id' Result (t s) SOutgoing

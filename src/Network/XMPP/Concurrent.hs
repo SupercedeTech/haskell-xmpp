@@ -1,5 +1,7 @@
 {-# LANGUAGE GADTs             #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.XMPP.Concurrent
@@ -40,46 +42,46 @@ import System.IO
 
 data Thread e = Thread
   { inCh  :: TChan (Either XmppError (SomeStanza e))
-  , outCh :: TChan (SomeStanza e)
+  , outCh :: TChan (SomeStanza ())
   }
 
 type XmppThreadT m a e = ReaderT (Thread e) m a
 
 -- Two streams: input and output. Threads read from input stream and write to output stream.
 -- | Runs thread in XmppState monad
-runThreaded :: (FromXML e, MonadIO m, MonadUnliftIO m) => XmppThreadT m () e -> XmppMonad m ()
+runThreaded
+  :: (FromXML e, MonadIO m, MonadUnliftIO m)
+  => XmppThreadT m () e
+  -> XmppMonad m ()
 runThreaded action = do
-  in' <- atomically newTChan
-  out' <- atomically newTChan
-  void $ lift $ async $ runReaderT action $ Thread in' out'
-  s <- get
-  void $ lift $ async $ loopWrite s out'
-  void $ lift $ async $ connPersist $ handle s
+  (in', out')  <- atomically $ (,) <$> newTChan <*> newTChan
+  s@Stream{..} <- get
+  void $ lift $
+    async (runReaderT action $ Thread in' out') >>
+    async (loopWrite s out') >>
+    async (connPersist handle)
   loopRead in'
-    where 
-      loopRead in' = loop $ parseM >>= (liftIO . atomically . writeTChan in')
-      loopWrite s out' =
-        void $ runXmppMonad $ do
-          put s
-          loop $ do
-            st <- liftIO $ atomically $ readTChan out'
-            case st of
-                SomeStanza stnz@MkMessage{ mPurpose = SOutgoing }  -> xmppSend stnz
-                SomeStanza stnz@MkPresence{ pPurpose = SOutgoing } -> xmppSend stnz
-                SomeStanza stnz@MkIQ{ iqPurpose = SOutgoing }      -> xmppSend stnz
-                _                            -> pure () -- Won't happen, but we gotta make compiler happy
-      loop = sequence_ . repeat
+ where
+  loopRead in' = loop $ parseM >>= (atomically . writeTChan in')
+  loopWrite s out' = runXmppMonad $ (put s >>) $ loop $
+    liftIO (atomically $ readTChan out') >>= \case
+      SomeStanza stnz@MkMessage { mPurpose = SOutgoing } -> xmppSend stnz
+      SomeStanza stnz@MkPresence { pPurpose = SOutgoing } -> xmppSend stnz
+      SomeStanza stnz@MkIQ { iqPurpose = SOutgoing } -> xmppSend stnz
+      _ -> pure () -- Won't happen, but we gotta make compiler happy
+  loop = sequence_ . repeat
 
 readChanS :: MonadIO m => XmppThreadT m (Either XmppError (SomeStanza e)) e
-readChanS =
-  asks inCh >>= liftIO . atomically . readTChan
+readChanS = asks inCh >>= liftIO . atomically . readTChan
 
-writeChanS :: MonadIO m => SomeStanza e -> XmppThreadT m () e
-writeChanS a = 
-  void $ asks outCh >>= liftIO . atomically . flip writeTChan a 
+writeChanS :: MonadIO m => SomeStanza () -> XmppThreadT m () e
+writeChanS a = void $ asks outCh >>= liftIO . atomically . flip writeTChan a
 
 -- | Runs specified action in parallel
-withNewThread :: (MonadIO m, MonadUnliftIO m) => XmppThreadT m () e -> XmppThreadT m (Async ()) e
+withNewThread
+  :: (MonadIO m, MonadUnliftIO m)
+  => XmppThreadT m () e
+  -> XmppThreadT m (Async ()) e
 withNewThread a = do
   newin <- asks inCh >>= liftIO . atomically . dupTChan
   asks outCh >>= lift . async . runReaderT a . Thread newin
