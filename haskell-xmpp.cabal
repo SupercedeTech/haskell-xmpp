@@ -56,6 +56,7 @@ library
                , singletons
                , time
                , unliftio
+               , safe-exceptions
 
   Exposed-modules: Network.XMPP
                  , Network.XMPP.Sasl

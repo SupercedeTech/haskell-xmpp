@@ -49,7 +49,7 @@ import Text.XML.HaXml.Posn    (Posn)
 import Text.XML.HaXml.Lex     (Token)
 import Text.XML               (Node)
 import Data.Singletons.TH     (genSingletons, Sing(..))
-
+import Control.Exception.Safe (MonadMask, MonadCatch, MonadThrow)
 --------------------------------------------------------------------------------
 
 type Server   = T.Text
@@ -69,7 +69,7 @@ data Stream
 
 newtype XmppMonad m a
     = XmppMonad { unXmppMonad :: StateT Stream m a }
-    deriving (Functor, Applicative, Monad, MonadIO, MonadState Stream, MonadTrans)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadState Stream, MonadTrans, MonadMask, MonadCatch, MonadThrow)
 
 runXmppMonad :: MonadIO m => XmppMonad m a -> m (a, Stream)
 runXmppMonad = flip runStateT newStream . unXmppMonad

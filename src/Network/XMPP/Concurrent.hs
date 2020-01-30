@@ -34,15 +34,16 @@ import Network.XMPP.Stream
 import Network.XMPP.Types
 import Network.XMPP.Utils
 import Network.XMPP.XML
-import UnliftIO.Async          (Async, async)
+import Control.Exception.Safe
+import UnliftIO.Async          (Async, async, cancel)
 import UnliftIO                (TChan, MonadUnliftIO, atomically, newTChan,
                                 writeTChan, readTChan, dupTChan)
 
 import System.IO
 
 data Thread e = Thread
-  { inCh  :: TChan (Either XmppError (SomeStanza e))
-  , outCh :: TChan (SomeStanza ())
+  { tInCh  :: TChan (Either XmppError (SomeStanza e))
+  , tOutCh :: TChan (SomeStanza ())
   }
 
 type XmppThreadT m a e = ReaderT (Thread e) m a
@@ -50,17 +51,19 @@ type XmppThreadT m a e = ReaderT (Thread e) m a
 -- Two streams: input and output. Threads read from input stream and write to output stream.
 -- | Runs thread in XmppState monad
 runThreaded
-  :: (FromXML e, MonadIO m, MonadUnliftIO m)
+  :: (FromXML e, MonadIO m, MonadUnliftIO m, MonadMask m)
   => XmppThreadT m () e
   -> XmppMonad m ()
 runThreaded action = do
   (in', out')  <- atomically $ (,) <$> newTChan <*> newTChan
   s@Stream{..} <- get
-  void $ lift $
-    async (runReaderT action $ Thread in' out') >>
-    async (loopWrite s out') >>
-    async (connPersist handle)
-  loopRead in'
+  (actionThread, writerThread, persisterThread) <- lift $
+    (,,)
+    <$> async (runReaderT action $ Thread in' out')
+    <*> async (void $ loopWrite s out')
+    <*> async (connPersist handle)
+  let finalize = mapM_ cancel [actionThread, writerThread, persisterThread]
+  loopRead in' `finally` finalize
  where
   loopRead in' = loop $ parseM >>= (atomically . writeTChan in')
   loopWrite s out' = runXmppMonad $ (put s >>) $ loop $
@@ -72,10 +75,10 @@ runThreaded action = do
   loop = sequence_ . repeat
 
 readChanS :: MonadIO m => XmppThreadT m (Either XmppError (SomeStanza e)) e
-readChanS = asks inCh >>= liftIO . atomically . readTChan
+readChanS = asks tInCh >>= liftIO . atomically . readTChan
 
 writeChanS :: MonadIO m => SomeStanza () -> XmppThreadT m () e
-writeChanS a = void $ asks outCh >>= liftIO . atomically . flip writeTChan a
+writeChanS a = void $ asks tOutCh >>= liftIO . atomically . flip writeTChan a
 
 -- | Runs specified action in parallel
 withNewThread
@@ -83,8 +86,8 @@ withNewThread
   => XmppThreadT m () e
   -> XmppThreadT m (Async ()) e
 withNewThread a = do
-  newin <- asks inCh >>= liftIO . atomically . dupTChan
-  asks outCh >>= lift . async . runReaderT a . Thread newin
+  newin <- asks tInCh >>= liftIO . atomically . dupTChan
+  asks tOutCh >>= lift . async . runReaderT a . Thread newin
 
 -- | Turns action into infinite loop
 loop :: MonadIO m => XmppThreadT m () e -> XmppThreadT m () e
