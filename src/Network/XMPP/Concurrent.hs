@@ -58,18 +58,19 @@ runThreaded action = do
   s@Stream{..} <- get
   void $ lift $
     async (runReaderT action $ Thread in' out') >>
-    async (void $ loopWrite s out') >>
+    async (void $ async $ runXmppMonad' s $ loopWrite out') >>
     async (connPersist handle)
   loopRead in'
  where
-  loopRead in' = loop $ parseM >>= (atomically . writeTChan in')
-  loopWrite s out' = runXmppMonad $ (put s >>) $ loop $
+  loopRead in' = parseM >>= (atomically . writeTChan in') >> loopRead in'
+  loopWrite :: MonadIO m => TChan (SomeStanza e) -> XmppMonad m ()
+  loopWrite out'= do
     liftIO (atomically $ readTChan out') >>= \case
       SomeStanza stnz@MkMessage { mPurpose = SOutgoing } -> xmppSend stnz
       SomeStanza stnz@MkPresence { pPurpose = SOutgoing } -> xmppSend stnz
       SomeStanza stnz@MkIQ { iqPurpose = SOutgoing } -> xmppSend stnz
       _ -> pure () -- Won't happen, but we gotta make compiler happy
-  loop = sequence_ . repeat
+    loopWrite out'
 
 readChanS :: MonadIO m => XmppThreadT m (Either XmppError (SomeStanza e)) e
 readChanS = asks tInCh >>= liftIO . atomically . readTChan
