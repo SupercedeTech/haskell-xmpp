@@ -1,7 +1,9 @@
-{-# LANGUAGE GADTs             #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE MultiParamTypeClasses   #-}
+{-# LANGUAGE FlexibleInstances       #-}
+{-# LANGUAGE RecordWildCards         #-}
+{-# LANGUAGE LambdaCase              #-}
+{-# LANGUAGE DataKinds               #-}
+{-# LANGUAGE GADTs                   #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.XMPP.Concurrent
@@ -46,6 +48,9 @@ data Thread e = Thread
   }
 
 type XmppThreadT m a e = ReaderT (Thread e) m a
+
+instance MonadIO m => XmppSendable (ReaderT (Thread e) m) (Stanza t 'Outgoing ()) where
+  xmppSend = writeChanS . SomeStanza
 
 -- Two streams: input and output. Threads read from input stream and write to output stream.
 -- | Runs thread in XmppState monad

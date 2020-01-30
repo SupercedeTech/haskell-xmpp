@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -59,20 +60,20 @@ import           Network.XMPP.Stanza
 
 -- Main 'workhorses' for Stream are 'xmppSend', 'nextM', 'peekM' and 'selectM':
 -- | Sends message into Stream
-class XmppSendable a where
-  xmppSend :: MonadIO m => a -> XmppMonad m ()
+class XmppSendable t a where
+  xmppSend :: Monad t => a -> t ()
 
-instance XmppSendable Node where
+instance MonadIO m => XmppSendable (XmppMonad m) Node where
   xmppSend node = do
     h <- gets handle
     liftIO $ hPutNode h node
 
-instance XmppSendable (Content Posn) where
+instance MonadIO m => XmppSendable (XmppMonad m) (Content Posn) where
   xmppSend content = do
     h <- gets handle
     liftIO $ hPutXmpp h content
 
-instance XmppSendable (Stanza t 'Outgoing e) where
+instance MonadIO m => XmppSendable (XmppMonad m) (Stanza t 'Outgoing e) where
   xmppSend s = xmppSend (encodeStanza s :: Node)
 
 data XmppError =
