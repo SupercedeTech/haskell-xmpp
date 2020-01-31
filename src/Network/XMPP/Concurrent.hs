@@ -67,7 +67,12 @@ runThreaded action = do
     async (connPersist handle)
   loopRead in'
  where
-  loopRead in' = parseM >>= (atomically . writeTChan in') >> loopRead in'
+  loopRead in' = do
+    msg <- parseM
+    atomically $ writeTChan in' msg
+    case msg of
+      Left StreamClosedError -> pure ()
+      _                      -> loopRead in'
   loopWrite :: MonadIO m => TChan (SomeStanza e) -> XmppMonad m ()
   loopWrite out'= do
     liftIO (atomically $ readTChan out') >>= \case
