@@ -53,7 +53,7 @@ queryForAssociatedServicesStanza from srv uuid =
     , iqPurpose = SOutgoing
     }
 
-queryForRoomInfoStanza :: UserJID -> RoomJID -> UUID.UUID -> Stanza 'IQ 'Outgoing MUCPayload
+queryForRoomInfoStanza :: UserJID -> RoomJID -> UUID.UUID -> Stanza 'IQ 'Outgoing ()
 queryForRoomInfoStanza from room uuid =
   MkIQ
     { iqFrom = Just $ SomeJID from
@@ -64,7 +64,7 @@ queryForRoomInfoStanza from room uuid =
     , iqPurpose = SOutgoing
     }
 
-createRoomStanza :: UserJID -> UserJID -> UUID.UUID -> Stanza 'Presence 'Outgoing MUCPayload
+createRoomStanza :: UserJID -> UserJID -> UUID.UUID -> Stanza 'Presence 'Outgoing ()
 createRoomStanza who room uuid =
   MkPresence
     { pFrom     = Just $ SomeJID who
@@ -78,7 +78,7 @@ createRoomStanza who room uuid =
     , pPurpose = SOutgoing
     }
 
-leaveRoomStanza :: UserJID -> RoomMemberJID -> UUID.UUID -> Stanza 'Presence 'Outgoing MUCPayload
+leaveRoomStanza :: UserJID -> RoomMemberJID -> UUID.UUID -> Stanza 'Presence 'Outgoing ()
 leaveRoomStanza user member uuid =
   MkPresence
     { pFrom     = Just $ SomeJID user

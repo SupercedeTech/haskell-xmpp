@@ -49,7 +49,6 @@ import Text.XML.HaXml.Posn    (Posn)
 import Text.XML.HaXml.Lex     (Token)
 import Text.XML               (Node)
 import Data.Singletons.TH     (genSingletons, Sing(..))
-
 --------------------------------------------------------------------------------
 
 type Server   = T.Text
