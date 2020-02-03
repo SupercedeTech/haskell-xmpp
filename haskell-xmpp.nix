@@ -1,7 +1,7 @@
 { mkDerivation, array, base, blaze-markup, HaXml, html, mtl
 , network, polyparse, pretty, random, regex-compat, singletons
 , stdenv, stm, text, time, utf8-string, uuid, xml-conduit
-, xml-hamletб unliftio
+, xml-hamlet, unliftio
 }:
 mkDerivation {
   pname = "haskell-xmpp";
