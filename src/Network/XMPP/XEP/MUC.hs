@@ -21,7 +21,7 @@ module Network.XMPP.XEP.MUC
 , queryForAssociatedServicesStanza, submitInstantRoomConfigStanza
 , setRoomMembersListStanza, queryForRoomInfoStanza
 , UserJID, RoomJID, RoomMemberJID, FromXML(..), MUCPayload(..), RoomMembersList(..)
-, Affiliation(..)
+, Affiliation(..), Role(..)
 )
 where
 
