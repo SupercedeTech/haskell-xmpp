@@ -72,6 +72,7 @@ runThreaded action = do
     atomically $ writeTChan in' msg
     case msg of
       Left StreamClosedError -> pure ()
+      Left RanOutOfInput     -> pure ()
       _                      -> loopRead in'
   loopWrite :: MonadIO m => TChan (SomeStanza e) -> XmppMonad m ()
   loopWrite out'= do

@@ -81,6 +81,7 @@ data XmppError =
   | MessageParseError Text Text
   | NonSupportedAuthMechanisms [Text] Text
   | AuthError Text
+  | RanOutOfInput
   | UnknownVersion Text
   | UnknownError Text
   deriving (Eq, Show)
@@ -119,6 +120,8 @@ withUUID setUUID = setUUID <$> liftIO UUID.nextRandom
 nextM :: MonadIO m => XmppMonad m (Either XmppError (Content Posn))
 nextM = runExceptT $ do
   ls <- lift $ gets lexemes
+
+  if null ls then throwError RanOutOfInput else pure ()
 
   case xmlParseWith (elemCloseTag $ N "stream:stream") ls of
     (Right (), rest) -> do
