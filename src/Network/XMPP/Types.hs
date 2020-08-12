@@ -8,6 +8,8 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 
 -----------------------------------------------------------------------------
@@ -21,19 +23,7 @@
 -- Portability :  portable
 --
 -----------------------------------------------------------------------------
-module Network.XMPP.Types
-( Server, Username, Password, Resource
-, XmppMonad, runXmppMonad, runXmppMonad'
-, Stream(..), StreamType(..)
-, Stanza(..), StanzaType(..), SomeStanza(..)
-, MessageType(..), PresenceType(..), IQType(..), ShowType(..)
-, RosterItem(..)
-, JID(..), JIDQualification(..), SomeJID(..), NodeID(..), ResourceID(..), DomainID(..)
-, StanzaPurpose(..)
-, Sing(..), IncomingSym0, OutgoingSym0, SStanzaPurpose
-, toBareJID
-)
-where
+module Network.XMPP.Types where
 
 import System.IO              (Handle, stdin)
 import Control.Monad.IO.Class (MonadIO)
@@ -48,7 +38,8 @@ import Text.XML.HaXml.Types   (Content)
 import Text.XML.HaXml.Posn    (Posn)
 import Text.XML.HaXml.Lex     (Token)
 import Text.XML               (Node)
-import Data.Singletons.TH     (genSingletons, Sing(..))
+import Data.Singletons.TH     (genSingletons, Sing(..), singShowInstance, showSingInstance)
+import Data.Singletons.ShowSing
 --------------------------------------------------------------------------------
 
 type Server   = T.Text
@@ -331,6 +322,7 @@ data StanzaPurpose = Incoming | Outgoing
   deriving (Eq, Show)
 
 $(genSingletons [''StanzaPurpose])
+$(showSingInstance ''StanzaPurpose)
 
 data SomeStanza e = forall (a :: StanzaType) (p :: StanzaPurpose). SomeStanza (Stanza a p e)
 
@@ -378,11 +370,4 @@ data Stanza :: StanzaType -> StanzaPurpose -> * -> * where
         }
         -> Stanza 'IQ p ext
 
-instance Show (Sing 'Incoming) where
-  show _ = "incoming"
-
-instance Show (Sing 'Outgoing) where
-  show _ = "outgoing"
-
-deriving instance (Show ext) => Show (Stanza t 'Incoming ext)
-deriving instance (Show ext) => Show (Stanza t 'Outgoing ext)
+deriving instance (Show (DataByPurpose p ext), Show ext, Show b, Sing p ~ b) => Show (Stanza t p ext)

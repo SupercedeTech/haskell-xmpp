@@ -17,9 +17,7 @@ import           Data.Maybe             (catMaybes)
 
 import           Text.Hamlet.XML        (xml)
 
-import           Network.XMPP.Types     (Stanza(..), StanzaType(..), SomeJID(..),
-                                         StanzaPurpose(..), Sing(..), JID(..),
-                                         JIDQualification(..), IQType(..))
+import           Network.XMPP.Types
 import           Network.XMPP.XML       (ToXML(..), FromXML(..), matchPatterns,
                                          txtpat, mread)
 import           Network.XMPP.XEP.Form  (XmppForm(..), XmppField(..))
