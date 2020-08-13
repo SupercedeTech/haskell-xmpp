@@ -1,5 +1,5 @@
 Name: haskell-xmpp
-Version: 1.0.2
+Version: 1.1.0
 License: BSD3
 License-File: LICENSE
 Author: Dmitry Astapov <dastapov@gmail.com>, pierre <k.pierre.k@gmail.com>
@@ -9,7 +9,7 @@ Category: Network
 Copyright: (c) 2005-2011 Dmitry Astapov, k.pierre
 Stability: Stable
 Cabal-version: >=1.6
-Tested-with: GHC==6.10.4, GHC==6.12.1
+Tested-with: GHC==8.8.3
 Build-type: Simple 
 Bug-reports: mailto: dastapov@gmail.com
 Extra-source-files: README.md examples/Test.hs
@@ -42,7 +42,7 @@ library
                , array
                , mtl
                , HaXml
-               , network
+               , network < 3
                , html
                , polyparse
                , regex-compat
@@ -53,7 +53,7 @@ library
                , xml-conduit
                , text
                , blaze-markup
-               , singletons
+               , singletons >= 2.6
                , time
                , unliftio
 

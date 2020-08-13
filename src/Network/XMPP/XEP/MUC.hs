@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -209,8 +210,8 @@ data MUCPayload =
     , mamWhen     :: UTCTime
     , mamStoredId :: T.Text
     }
-  deriving (Show)
 
+deriving instance Show MUCPayload
 newtype RoomMembersList = RoomMembersList [(UserJID, Affiliation)]
   deriving (Eq, Show)
 
