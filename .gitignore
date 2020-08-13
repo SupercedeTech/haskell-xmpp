@@ -1,4 +1,5 @@
 .stack-work/
 hie-logfile.log
 stack.yaml.lock
-
+dist-newstyle/
+.ghc.environment.*
