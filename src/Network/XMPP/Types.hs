@@ -17,7 +17,7 @@
 -- Module      :  Network.XMPP.Types
 -- Copyright   :  (c) Dmitry Astapov, 2006 ; pierre, 2007
 -- License     :  BSD-style (see the file LICENSE)
--- 
+--
 -- Maintainer  :  Dmitry Astapov <dastapov@gmail.com>, pierre <k.pierre.k@gmail.com>
 -- Stability   :  experimental
 -- Portability :  portable
@@ -38,8 +38,7 @@ import Text.XML.HaXml.Types   (Content)
 import Text.XML.HaXml.Posn    (Posn)
 import Text.XML.HaXml.Lex     (Token)
 import Text.XML               (Node)
-import Data.Singletons.TH     (genSingletons, Sing(..), singShowInstance, showSingInstance)
-import Data.Singletons.ShowSing
+import Singlethongs
 --------------------------------------------------------------------------------
 
 type Server   = T.Text
@@ -191,7 +190,7 @@ instance Show StreamType where
 data RosterItem = RosterItem { jid :: JID 'NodeResource
                              -- ^ Entry's JID
                              , subscribtion :: SubscribtionType
-                             -- ^ Subscribtion type 
+                             -- ^ Subscribtion type
                              , nickname :: Maybe String
                              -- ^ Entry's nickname
                              , groups :: [String]
@@ -321,10 +320,11 @@ instance Read ShowType where
 data StanzaPurpose = Incoming | Outgoing
   deriving (Eq, Show)
 
-$(genSingletons [''StanzaPurpose])
-$(showSingInstance ''StanzaPurpose)
+singlethongs ''StanzaPurpose
 
-data SomeStanza e = forall (a :: StanzaType) (p :: StanzaPurpose). SomeStanza (Stanza a p e)
+data SomeStanza e
+  = forall (a :: StanzaType) (p :: StanzaPurpose)
+  . SomeStanza (Stanza a p e)
 
 data StanzaType
     = Message
@@ -370,4 +370,10 @@ data Stanza :: StanzaType -> StanzaPurpose -> * -> * where
         }
         -> Stanza 'IQ p ext
 
-deriving instance (Show (DataByPurpose p ext), Show ext, Show b, Sing p ~ b) => Show (Stanza t p ext)
+instance Show (Sing 'Incoming) where
+  show _ = "incoming"
+instance Show (Sing 'Outgoing) where
+  show _ = "outgoing"
+
+deriving instance (Show ext) => Show (Stanza t 'Incoming ext)
+deriving instance (Show ext) => Show (Stanza t 'Outgoing ext)

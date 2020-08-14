@@ -3,7 +3,7 @@
 -- Module      :  Network.XMPP.Helpers
 -- Copyright   :  (c) Dmitry Astapov, 2006
 -- License     :  BSD-style (see the file LICENSE)
--- 
+--
 -- Maintainer  :  Dmitry Astapov <dastapov@gmail.com>
 -- Stability   :  experimental
 -- Portability :  portable
@@ -21,7 +21,6 @@ module Network.XMPP.Helpers
 import System.IO (Handle, hPutStrLn, hPutStr, hGetLine, openFile, IOMode(..))
 import Control.Monad (void, when)
 
-import Network (connectTo, PortID(..) )
 import Network.BSD (getHostByName, hostAddresses)
 import qualified Data.Text as T
 
@@ -46,7 +45,13 @@ connectViaTcp server port = do
 --  via HTTP 1.0 proxy
 connectViaHttpProxy :: Show a => HostName -> Integer -> T.Text -> a -> IO Handle
 connectViaHttpProxy proxyServer proxyPort server port = do
-  h <- connectTo proxyServer $ PortNumber $ fromIntegral proxyPort
+  let hints = defaultHints
+        { addrFlags = [AI_NUMERICHOST, AI_NUMERICSERV]
+        , addrSocketType = Stream
+        }
+  addr:_ <- getAddrInfo (Just hints) (Just proxyServer) (Just $ show proxyPort)
+  sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+  h <- socketToHandle sock ReadWriteMode
   hPutStrLn h $ unlines
     [ concat ["CONNECT ", T.unpack server, ":", show port, " HTTP/1.0"]
     , "Connection: Keep-Alive"

@@ -10,7 +10,7 @@ Copyright: (c) 2005-2011 Dmitry Astapov, k.pierre
 Stability: Stable
 Cabal-version: >=1.6
 Tested-with: GHC==8.8.3
-Build-type: Simple 
+Build-type: Simple
 Bug-reports: mailto: dastapov@gmail.com
 Extra-source-files: README.md examples/Test.hs
 
@@ -42,7 +42,8 @@ library
                , array
                , mtl
                , HaXml
-               , network < 3
+               , network
+               , network-bsd
                , html
                , polyparse
                , regex-compat
@@ -53,7 +54,7 @@ library
                , xml-conduit
                , text
                , blaze-markup
-               , singletons >= 2.6
+               , singlethongs
                , time
                , unliftio
 
