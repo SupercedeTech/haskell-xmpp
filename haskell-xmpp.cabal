@@ -1,17 +1,17 @@
 Name: haskell-xmpp
-Version: 1.1.0
+Version: 2.0.0
 License: BSD3
 License-File: LICENSE
-Author: Dmitry Astapov <dastapov@gmail.com>, pierre <k.pierre.k@gmail.com>
-Maintainer: Dmitry Astapov <dastapov@gmail.com>
-Homepage: http://patch-tag.com/r/adept/haskell-xmpp/home
+Author: Dmitry Astapov <dastapov@gmail.com>, pierre <k.pierre.k@gmail.com>, Jappie Klooster <jappie@riskbook.com>
+Maintainer: Jappie Klooster <jappie@riskbook.com>, Veronika Romashkina <veronika@riskbook.com>
+Homepage: https://github.com/riskbook/haskell-xmpp
 Category: Network
 Copyright: (c) 2005-2011 Dmitry Astapov, k.pierre
 Stability: Stable
-Cabal-version: >=1.6
+Cabal-version: >=1.10
 Tested-with: GHC==8.8.3
 Build-type: Simple
-Bug-reports: mailto: dastapov@gmail.com
+Bug-reports: https://github.com/riskbook/haskell-xmpp/issues
 Extra-source-files: README.md examples/Test.hs
 
 Synopsis: Haskell XMPP (eXtensible Message Passing Protocol, a.k.a. Jabber) library
@@ -23,8 +23,8 @@ Description: Haskell XMPP (eXtensible Message Passing Protocol, a.k.a. Jabber) l
   This library make extensive use of STM and threads to simplify writing message-handling code.
 
 source-repository head
-  type: darcs
-  location: adept@patch-tag.com:/r/adept/haskell-xmpp
+  type: git
+  location: git@github.com:riskbook/haskell-xmpp.git
 
 flag examples
   description: Build examples
@@ -35,8 +35,9 @@ flag debug
   default: False
 
 library
+  default-language: Haskell2010
   Hs-Source-Dirs: ./src
-  Build-Depends: base
+  Build-Depends: base < 5
                , random
                , pretty
                , array
@@ -84,6 +85,7 @@ library
      CPP-Options: -DDEBUG
 
 Executable haskell-xmpp-test
+  default-language: Haskell2010
   Hs-Source-Dirs: ./src ./examples
   if flag(examples)
     build-depends: base > 3 && <=5
