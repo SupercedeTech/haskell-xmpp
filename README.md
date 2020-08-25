@@ -18,10 +18,10 @@ We patched the orignal work by dmitry with these fixes:
 ## Contributing
 Feel free to submit any PR or issue.
 
-Questions can be send to: jappie@riskbook.com
+Questions can be send to: support@riskbook.com
 
 ## License
-MIT
+BSD3
 
 ## Special thanks
 A special thanks to dmitry astapov for making the original release.
