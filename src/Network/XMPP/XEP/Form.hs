@@ -2,6 +2,12 @@
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE DataKinds         #-}
 
+-----------------------------------------------------------------------------
+-- |
+-- Copyright   :  (c) riskbook, 2020
+-- License     :  BSD-style (see the file libraries/base/LICENSE)
+--
+-----------------------------------------------------------------------------
 module Network.XMPP.XEP.Form where
 
 import           Text.Hamlet.XML             (xml)

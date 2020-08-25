@@ -1,5 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-----------------------------------------------------------------------------
+-- |
+-- Copyright   :  (c) riskbook, 2020
+-- License     :  BSD-style (see the file libraries/base/LICENSE)
+--
+-----------------------------------------------------------------------------
 module Network.XMPP.XML
   ( strAttr
   , getVals
