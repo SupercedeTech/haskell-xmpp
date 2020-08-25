@@ -12,8 +12,7 @@ Cabal-version: >=2.0
 Tested-with: GHC==8.8.3
 Build-type: Simple
 Bug-reports: https://github.com/riskbook/haskell-xmpp/issues
-Extra-source-files: README.md examples/Test.hs
-ChangeLog: Changelog.md
+Extra-source-files: README.md examples/Test.hs Changelog.md
 
 Synopsis: Haskell XMPP (eXtensible Message Passing Protocol, a.k.a. Jabber) library
 Description: Haskell XMPP (eXtensible Message Passing Protocol, a.k.a. Jabber) library
