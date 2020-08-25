@@ -8,7 +8,7 @@ Homepage: https://github.com/riskbook/haskell-xmpp
 Category: Network
 Copyright: (c) 2005-2011 Dmitry Astapov, k.pierre
 Stability: Stable
-Cabal-version: >=1.10
+Cabal-version: >=2.00
 Tested-with: GHC==8.8.3
 Build-type: Simple
 Bug-reports: https://github.com/riskbook/haskell-xmpp/issues
