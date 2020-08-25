@@ -24,4 +24,4 @@ Questions can be send to: jappie@riskbook.com
 MIT
 
 ## Special thanks
-A special thanks to dmitry astapov for making the original release.
+A special thanks to Dmitry Astapov for making the original release.
