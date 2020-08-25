@@ -2,8 +2,8 @@ Name: haskell-xmpp
 Version: 2.0.0
 License: BSD3
 License-File: LICENSE
-Author: Dmitry Astapov <dastapov@gmail.com>, pierre <k.pierre.k@gmail.com>, Jappie Klooster <jappie@riskbook.com>
-Maintainer: Jappie Klooster <jappie@riskbook.com>, Veronika Romashkina <veronika@riskbook.com>
+Author: Dmitry Astapov <dastapov@gmail.com>, pierre <k.pierre.k@gmail.com>, riskbook <support@riskbook.com>
+Maintainer: riskbook <support@riskbook.com>
 Homepage: https://github.com/riskbook/haskell-xmpp
 Category: Network
 Copyright: (c) 2005-2011 Dmitry Astapov, k.pierre
