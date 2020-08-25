@@ -43,6 +43,10 @@ and thus had memory leaks.
 
 -}
 
+-- |
+-- Copyright   :  (c) riskbook, 2020
+-- SPDX-License-Identifier:  BSD3
+
 module Network.XMPP.UTF8
   ( fromUTF8, toUTF8
   ) where

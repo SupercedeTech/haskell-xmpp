@@ -5,7 +5,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) riskbook, 2020
--- License     :  BSD-style (see the file libraries/base/LICENSE)
+-- SPDX-License-Identifier:  BSD3
 --
 -----------------------------------------------------------------------------
 module Network.XMPP.XEP.Form where
