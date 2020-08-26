@@ -27,3 +27,7 @@ BSD3
 
 ## Special thanks
 A special thanks to Dmitry Astapov for making the original release.
+
+### Logo sources
++ https://commons.wikimedia.org/wiki/File:XMPP_logo.svg
++ https://commons.wikimedia.org/wiki/File:Haskell-Logo.svg
