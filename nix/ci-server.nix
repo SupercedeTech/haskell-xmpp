@@ -10,7 +10,7 @@ let
     CREATE USER "test-ejabberd" WITH SUPERUSER PASSWORD 'safe';
     CREATE DATABASE ejabberd OWNER "test-ejabberd";
 
-    \c ejabberd riskbook-ejabberd
+    \c ejabberd test-ejabberd
     \i ${ejabberdInit}
   '';
 in
