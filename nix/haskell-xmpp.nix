@@ -12,10 +12,8 @@ pkgs.haskell.lib.overrideCabal haskell-xmpp (drv: {
     doCheck = false;
     testHaskellDepends = [];
     testToolDepends = [];
-    doHaddock = false;
     enableLibraryProfiling = false;
     enableSeparateDataOutput = false;
     enableSharedExecutables = false;
-    isLibrary = false;
-    postFixup = "rm -rf $out/lib $out/nix-support $out/share/doc";
+    isLibrary = true;
   })
