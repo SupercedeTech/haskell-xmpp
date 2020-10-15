@@ -12,9 +12,19 @@ in
       graphics = false;
       memorySize = 4096;
     } ;
+
+    environment = {
+        etc."ejabberd.yml" = {
+            user = "ejabberd";
+            mode = "0600";
+            text = builtins.readFile ./ejabberd.yml;
+        };
+    };
+
     services = {
         ejabberd = {
             enable = true;
+            configFile = "/etc/ejabberd.yml";
         };
     };
 
