@@ -16,4 +16,5 @@ pkgs.haskell.lib.overrideCabal haskell-xmpp (drv: {
     enableSeparateDataOutput = false;
     enableSharedExecutables = false;
     isLibrary = true;
+    enableSeparateDocOutput = false;
   })
