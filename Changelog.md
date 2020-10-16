@@ -7,6 +7,8 @@ Riskbook took over maintainership
 + Add Missing FlexibleContexts
 + Fix Duplicate show instances
 + Add integration tests
++ Add basic Ejabberd api support
+  This is to allow basic integration tests.
 
 ## Version 1.0.2 - 13.12.2019
 

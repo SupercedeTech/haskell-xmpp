@@ -58,6 +58,10 @@ library
                , singlethongs
                , time
                , unliftio
+               , aeson
+               , http-conduit < 2.3.8.0
+               , bytestring
+               , http-client
 
   Exposed-modules: Network.XMPP
                  , Network.XMPP.Sasl
@@ -74,6 +78,7 @@ library
                  , Network.XMPP.XML
                  , Network.XMPP.MD5
                  , Network.XMPP.Base64
+                 , Network.XMPP.Ejabberd
                  , Network.XMPP.XEP.MUC
                  , Network.XMPP.XEP.MAM
                  , Network.XMPP.XEP.Form
@@ -105,3 +110,6 @@ Executable haskell-xmpp-io-test
       base                         >=4.9.1.0 && <5
     , hspec
     , haskell-xmpp
+  other-modules:
+    TestSuiteSpec
+    RoomSpec

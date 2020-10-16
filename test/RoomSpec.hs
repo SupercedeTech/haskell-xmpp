@@ -12,6 +12,7 @@ import Network.XMPP.Core
 import Control.Monad.IO.Class
 import Control.Monad
 import Network.XMPP.Stream
+import Network.XMPP.Ejabberd
 
 deriving instance Exception XmppError
 
@@ -19,6 +20,7 @@ spec :: Spec
 spec = do
   describe "connect to server" $ it "gets a connection" $ do
     handle <- liftIO $ connectViaTcp "localhost" 5222
+    registerNewUser localEjabberdHost (EUser "jappie" "pass") (VHost "localhost")
     (result, stream) <- runXmppMonad $ initStream handle "localhost" "jappie" "pass" "someResource"
     nodeResource <- either throwIO pure result
     void $ runXmppMonad' stream closeStream
