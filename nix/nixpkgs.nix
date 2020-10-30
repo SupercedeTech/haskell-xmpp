@@ -1,8 +1,6 @@
 let
-  owner = "NixOS";
-  repo = "nixpkgs";
-  # release from 13.08.2020
-  rev = "70b888b613f8b54d64958ac5c032af7baa88f8d0";
-  url = "https://github.com/${owner}/${repo}/archive/${rev}.tar.gz";
+  # https://github.com/NixOS/nixpkgs/tree/nixos-20.09
+  rev = "edb26126d98bc696f4f3e206583faa65d3d6e818";
+  url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
 in
   import (builtins.fetchTarball url)
