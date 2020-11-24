@@ -110,6 +110,7 @@ Executable haskell-xmpp-io-test
       base                         >=4.9.1.0 && <5
     , hspec
     , haskell-xmpp
+    , text
   other-modules:
     TestSuiteSpec
     RoomSpec
