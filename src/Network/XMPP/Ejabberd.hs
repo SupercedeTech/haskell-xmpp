@@ -68,6 +68,10 @@ instance J.ToJSON VHost where
 instance J.ToJSON RegisterUserReq where
   toJSON = J.genericToJSON snakeLabel
 
+-- | Make sure to get the port right
+--   https://docs.ejabberd.im/admin/guide/security/
+--   an example is available in 'localEjabberdHost',
+--   which is used for the integration tests.
 newtype EjabberdHost = EjabberdHost String
 
 snakeConstructor :: J.Options
