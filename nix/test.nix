@@ -14,8 +14,11 @@ in
     testScript = ''
       server.start()
       server.wait_for_unit("ejabberd.service")
-      server.succeed(
-          "${haskell-xmpp}/bin/haskell-xmpp-io-test"
+      print(
+          server.succeed(
+              "${haskell-xmpp}/bin/haskell-xmpp-io-test"
+          )
       )
+      print("done")
     '';
   }

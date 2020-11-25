@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -7,6 +9,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
 -- | basic stuff like connecting to a room and sending messages
 module RoomSpec where
@@ -25,6 +28,7 @@ import Network.XMPP.Stream
 import Network.XMPP.Ejabberd
 import Network.XMPP.Types
 import Network.XMPP.Concurrent
+import Data.Traversable
 
 deriving instance Exception XmppError
 
@@ -53,39 +57,25 @@ spec = describe "ejabbered server tests" $ do
     handle <- liftIO $ connectViaTcp "localhost" 5222
     registerNewUser localEjabberdHost (EUser "jappie" "pass")  (VHost "localhost")
     registerNewUser localEjabberdHost (EUser "jesiska" "pass") (VHost "localhost")
-    (result, stream) <- runXmppMonad $ do
+    void $ runXmppMonad $ do
       jappie  <- either (error "init failure") id <$> initStream handle "localhost" "jappie"  "pass" "someResource"
       xmppSend =<< withUUID (createRoomStanza jappie (mkParticipantJIDForRoom "jappie" someRoom))
       xmppSend =<< withUUID (createRoomStanza jappie (mkParticipantJIDForRoom "jesiska" someRoom ))
       let
           expectedMsg = "some-msg"
-      runThreaded @() $ do
-        stanza <- withUUID (roomMessageStanza jappie someRoom expectedMsg)
-        writeChanS $ SomeStanza stanza
-        pure ()
-
-      runThreaded $ do
-        stanze <- readChanS
-        case stanze of
+      stanza <- withUUID (roomMessageStanza jappie someRoom expectedMsg)
+      xmppSend $ stanza
+      stanze <- replicateM 10 parseM -- the order appears to be random
+      -- liftIO $ print stanze
+      for stanze $ \selected ->
+        case selected of
           Left x -> liftIO $ throwIO x
           Right msg -> case msg :: SomeStanza MUCPayload of
-              SomeStanza (MkMessage {mBody,mFrom}) -> do
-                case mFrom of
-                  Just (SomeJID (resource@NodeResourceJID{})) ->
-                    liftIO $ resource `shouldBe` jappie
-                  _ -> do
-                    error "expecting from"
-                    pure ()
-                liftIO $ mBody `shouldBe` expectedMsg
-
-              _other -> do
-                error $ "expecting message, got something else"
-                pure ()
-        pure ()
-
-    pure $! seq result -- no lazy
-    void $ runXmppMonad' stream closeStream
-
+              SomeStanza (MkMessage {mBody,mFrom, mPurpose = SIncoming}) -> do
+                liftIO $ unless (mBody == "") $ mBody `shouldBe` "some-msg"
+              unkown -> do
+                pure () -- skip
+      closeStream
 someRoom :: JID 'Node
 someRoom = mkRoomJID "localhost" "blah"
 

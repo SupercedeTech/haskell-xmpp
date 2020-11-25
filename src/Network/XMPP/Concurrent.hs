@@ -56,6 +56,7 @@ instance MonadIO m => XmppSendable (ReaderT (Thread e) m) (Stanza t 'Outgoing ()
 
 -- Two streams: input and output. Threads read from input stream and write to output stream.
 -- | Runs thread in XmppState monad
+--   blocks forever.
 runThreaded
   :: (FromXML e, MonadIO m, MonadUnliftIO m)
   => XmppThreadT m () e

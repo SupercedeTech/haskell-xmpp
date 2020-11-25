@@ -328,6 +328,14 @@ data SomeStanza e
   = forall (a :: StanzaType) (p :: StanzaPurpose)
   . SomeStanza (Stanza a p e)
 
+instance Show e => Show (SomeStanza e) where
+  show (SomeStanza (s@MkMessage {mPurpose = SIncoming})) = "(SomeStanza $ " <> show s <> ")"
+  show (SomeStanza (s@MkMessage {mPurpose = SOutgoing})) = "(SomeStanza $ " <> show s <> ")"
+  show (SomeStanza (s@MkPresence {pPurpose = SIncoming})) = "(SomeStanza $ " <> show s <> ")"
+  show (SomeStanza (s@MkPresence {pPurpose = SOutgoing})) = "(SomeStanza $ " <> show s <> ")"
+  show (SomeStanza (s@MkIQ {iqPurpose = SIncoming})) = "(SomeStanza $ " <> show s <> ")"
+  show (SomeStanza (s@MkIQ {iqPurpose = SOutgoing})) = "(SomeStanza $ " <> show s <> ")"
+
 data StanzaType
     = Message
     | Presence
@@ -377,5 +385,4 @@ instance Show (Sing 'Incoming) where
 instance Show (Sing 'Outgoing) where
   show _ = "outgoing"
 
-deriving instance (Show ext) => Show (Stanza t 'Incoming ext)
-deriving instance (Show ext) => Show (Stanza t 'Outgoing ext)
+deriving instance Show (Sing (dir :: StanzaPurpose)) => Show (DataByPurpose dir ext) => Show ext => Show (Stanza t dir ext)
