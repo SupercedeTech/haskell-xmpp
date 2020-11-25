@@ -1,6 +1,9 @@
 # Changelog for haskell-xmpp
 
-## Version 2.0.0 - 15.10.2020
+## Version 2.0.1 - 2020.11.25
+Bump cabal base version
+
+## Version 2.0.0 - 2020.11.25
 Riskbook took over maintainership
 
 + Use HaXML
