@@ -24,7 +24,7 @@ module Network.XMPP.Sasl
 import           Control.Monad                     (unless, join)
 import           Control.Monad.IO.Class
 import           Control.Monad.Except              (throwError, runExceptT,
-                                                    liftIO, lift, ExceptT(..))
+                                                    lift, ExceptT(..))
 import           Data.Char                         (chr, ord)
 import           Data.List                         (intercalate)
 import qualified Data.Text                         as T

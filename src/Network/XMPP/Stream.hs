@@ -37,7 +37,7 @@ import           Control.Monad                (void)
 import           Control.Monad.State          (MonadState(..), gets, modify)
 import           Control.Monad.Except         (runExceptT, throwError, lift)
 import           Control.Monad.IO.Class       (MonadIO(..))
-import           Control.Applicative          (Alternative, empty, pure)
+import           Control.Applicative          (Alternative, empty)
 import           System.IO                    (Handle, hGetContents)
 import           Data.Text                    (Text, unpack, pack)
 import qualified Data.UUID.V4                 as UUID

@@ -33,7 +33,7 @@ module Network.XMPP.Stanza
   , StanzaDecoder(..)
   ) where
 
-import           Control.Applicative         (Alternative, empty, pure)
+import           Control.Applicative         (Alternative, empty)
 import           Data.Maybe                  (mapMaybe, listToMaybe)
 import qualified Data.Text                   as T
 import           Text.Hamlet.XML             (xml)

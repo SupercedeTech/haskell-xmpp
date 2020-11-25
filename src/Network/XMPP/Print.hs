@@ -33,7 +33,6 @@ import qualified Data.Text                       as T
 import qualified Data.Text.Lazy                  as TL
 import           Text.XML                        (Node)
 import           Text.XML.HaXml                  hiding (tag)
-import           Text.XML.HaXml.Types            (Content)
 import           Text.XML.HaXml.Posn             (Posn)
 import qualified Text.XML.HaXml.Pretty           as P
 import           Text.Blaze.Renderer.Text        (renderMarkup)
