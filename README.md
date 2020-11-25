@@ -1,6 +1,6 @@
 [![Maintenance badge](https://img.shields.io/maintenance/yes/2020)](https://riskbook.com/)
 
-![Logo](https://raw.githubusercontent.com/riskbook/haskell-xmpp/Fixup-maintainer-info/haskell-logo-xmpp.svg)
+![Logo](https://raw.githubusercontent.com/riskbook/haskell-xmpp/master/haskell-logo-xmpp.svg)
 
 Fully functional haskell-xmpp bindings used in production
 at riskbook.
