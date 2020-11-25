@@ -1,21 +1,9 @@
-{ pkgs ? import ./nixpkgs.nix {}
-, compiler ? "ghc883"
+{
+    pkgs ? import nix/nixpkgs.nix {}, ...
 }:
-
-let
-  hpkgs = pkgs.haskell.packages.${compiler};
-  ignore = import ./gitignoreSource.nix { inherit (pkgs) lib; };
-  haskell-xmpp = hpkgs.callCabal2nix "haskell-xmpp" (ignore.gitignoreSource ./.) {};
-in
-pkgs.haskell.lib.overrideCabal haskell-xmpp (drv: {
-    configureFlags = ["-f-library-only"];
-    doCheck = false;
-    testHaskellDepends = [];
-    testToolDepends = [];
-    doHaddock = false;
-    enableLibraryProfiling = false;
-    enableSeparateDataOutput = false;
-    enableSharedExecutables = false;
-    isLibrary = false;
-    postFixup = "rm -rf $out/lib $out/nix-support $out/share/doc";
-  })
+{
+  haskell-xmpp-865 = import nix/haskell-xmpp.nix {compiler = "ghc865"; inherit pkgs; };
+  haskell-xmpp-883 = import nix/haskell-xmpp.nix {compiler = "ghc883"; inherit pkgs;};
+  haskell-xmpp-810 = import nix/haskell-xmpp.nix {compiler = "ghc8101"; inherit pkgs;};
+  test = pkgs.nixosTest nix/test.nix;
+}

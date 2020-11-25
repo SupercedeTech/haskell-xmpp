@@ -3,6 +3,8 @@
 -- Module      :  Network.XMPP.MD5
 -- Copyright   :  (c) Dmitry Astapov 20006, Ian Lynagh 2001
 -- License     :  BSD-style (see the file ReadMe.tex)
+-- Copyright   :  (c) riskbook, 2020
+-- SPDX-License-Identifier:  BSD3
 -- 
 -- Maintainer  :  dastapov@gmail.com
 -- Stability   :  experimental

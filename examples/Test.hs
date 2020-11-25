@@ -1,5 +1,9 @@
 {-# LANGUAGE GADTs #-}
 
+-- |
+-- Copyright   :  (c) riskbook, 2020
+-- SPDX-License-Identifier:  BSD3
+
 module Main where
 
 import Control.Monad.Trans (liftIO)

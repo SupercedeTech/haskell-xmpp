@@ -3,6 +3,12 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE RecordWildCards   #-}
 
+-----------------------------------------------------------------------------
+-- |
+-- Copyright   :  (c) riskbook, 2020
+-- SPDX-License-Identifier:  BSD3
+--
+-----------------------------------------------------------------------------
 module Network.XMPP.XEP.MAM
   ( messageArchiveQueryStanza
   , defMamQuery

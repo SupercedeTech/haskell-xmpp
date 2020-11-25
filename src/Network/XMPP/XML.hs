@@ -1,5 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-----------------------------------------------------------------------------
+-- |
+-- Copyright   :  (c) riskbook, 2020
+-- SPDX-License-Identifier:  BSD3
+--
+-----------------------------------------------------------------------------
 module Network.XMPP.XML
   ( strAttr
   , getVals

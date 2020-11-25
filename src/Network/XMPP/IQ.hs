@@ -7,6 +7,8 @@
 -- Module      :  Network.XMPP.IQ
 -- Copyright   :  (c) pierre, 2007
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
+-- Copyright   :  (c) riskbook, 2020
+-- SPDX-License-Identifier:  BSD3
 -- 
 -- Maintainer  :  k.pierre.k@gmail.com
 -- Stability   :  experimental

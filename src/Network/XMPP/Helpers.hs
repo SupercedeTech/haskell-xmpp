@@ -3,6 +3,8 @@
 -- Module      :  Network.XMPP.Helpers
 -- Copyright   :  (c) Dmitry Astapov, 2006
 -- License     :  BSD-style (see the file LICENSE)
+-- Copyright   :  (c) riskbook, 2020
+-- SPDX-License-Identifier:  BSD3
 --
 -- Maintainer  :  Dmitry Astapov <dastapov@gmail.com>
 -- Stability   :  experimental

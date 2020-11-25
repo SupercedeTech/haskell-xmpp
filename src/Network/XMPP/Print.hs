@@ -3,6 +3,8 @@
 -- Module      :  Network.XMPP.Print
 -- Copyright   :  (c) Dmitry Astapov, 2006 ; pierre, 2007
 -- License     :  BSD-style (see the file LICENSE)
+-- Copyright   :  (c) riskbook, 2020
+-- SPDX-License-Identifier:  BSD3
 -- 
 -- Maintainer  :  Dmitry Astapov <dastapov@gmail.com>, pierre <k.pierre.k@gmail.com>
 -- Stability   :  experimental

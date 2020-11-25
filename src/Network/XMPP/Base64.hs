@@ -3,6 +3,8 @@
 -- Module      :  Network.XMPP.Base64
 -- Copyright   :  (c) Dmitry Astapov 2006, Dominic Steinitz 2005, Warrick Gray 2002
 -- License     :  BSD-style (see the file ReadMe.tex)
+-- Copyright   :  (c) riskbook, 2020
+-- SPDX-License-Identifier:  BSD3
 --
 -- Maintainer  :  dastapov@gmail.com
 -- Stability   :  experimental

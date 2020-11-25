@@ -1,18 +1,18 @@
+cabal-version: 2.0
 Name: haskell-xmpp
-Version: 1.1.0
+Version: 2.0.0
 License: BSD3
 License-File: LICENSE
-Author: Dmitry Astapov <dastapov@gmail.com>, pierre <k.pierre.k@gmail.com>
-Maintainer: Dmitry Astapov <dastapov@gmail.com>
-Homepage: http://patch-tag.com/r/adept/haskell-xmpp/home
+Author: Dmitry Astapov <dastapov@gmail.com>, pierre <k.pierre.k@gmail.com>, riskbook <support@riskbook.com>
+Maintainer: riskbook <support@riskbook.com>
+Homepage: https://github.com/riskbook/haskell-xmpp
 Category: Network
 Copyright: (c) 2005-2011 Dmitry Astapov, k.pierre
 Stability: Stable
-Cabal-version: >=1.6
 Tested-with: GHC==8.8.3
 Build-type: Simple
-Bug-reports: mailto: dastapov@gmail.com
-Extra-source-files: README.md examples/Test.hs
+Bug-reports: https://github.com/riskbook/haskell-xmpp/issues
+Extra-source-files: README.md examples/Test.hs Changelog.md
 
 Synopsis: Haskell XMPP (eXtensible Message Passing Protocol, a.k.a. Jabber) library
 Description: Haskell XMPP (eXtensible Message Passing Protocol, a.k.a. Jabber) library
@@ -23,8 +23,8 @@ Description: Haskell XMPP (eXtensible Message Passing Protocol, a.k.a. Jabber) l
   This library make extensive use of STM and threads to simplify writing message-handling code.
 
 source-repository head
-  type: darcs
-  location: adept@patch-tag.com:/r/adept/haskell-xmpp
+  type: git
+  location: git@github.com:riskbook/haskell-xmpp.git
 
 flag examples
   description: Build examples
@@ -35,8 +35,9 @@ flag debug
   default: False
 
 library
+  default-language: Haskell2010
   Hs-Source-Dirs: ./src
-  Build-Depends: base
+  Build-Depends: base > 4.11.0.0 && <= 4.14.0.0
                , random
                , pretty
                , array
@@ -57,6 +58,10 @@ library
                , singlethongs
                , time
                , unliftio
+               , aeson
+               , http-conduit < 2.3.8.0
+               , bytestring
+               , http-client
 
   Exposed-modules: Network.XMPP
                  , Network.XMPP.Sasl
@@ -73,6 +78,7 @@ library
                  , Network.XMPP.XML
                  , Network.XMPP.MD5
                  , Network.XMPP.Base64
+                 , Network.XMPP.Ejabberd
                  , Network.XMPP.XEP.MUC
                  , Network.XMPP.XEP.MAM
                  , Network.XMPP.XEP.Form
@@ -84,6 +90,7 @@ library
      CPP-Options: -DDEBUG
 
 Executable haskell-xmpp-test
+  default-language: Haskell2010
   Hs-Source-Dirs: ./src ./examples
   if flag(examples)
     build-depends: base > 3 && <=5
@@ -93,3 +100,17 @@ Executable haskell-xmpp-test
      CPP-Options: -DDEBUG
   Main-Is: Test.hs
   GHC-Options: -Wall -fno-warn-name-shadowing -fno-warn-orphans
+
+Executable haskell-xmpp-io-test
+  default-language: Haskell2010
+  hs-source-dirs: ./test
+  main-is: Main.hs
+  build-tool-depends: hspec-discover:hspec-discover -any
+  build-depends:
+      base                         >=4.9.1.0 && <5
+    , hspec
+    , haskell-xmpp
+    , text
+  other-modules:
+    TestSuiteSpec
+    RoomSpec
