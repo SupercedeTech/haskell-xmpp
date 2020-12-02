@@ -17,7 +17,14 @@
 
 module Network.XMPP.Utils ( debug, debugIO ) where
 
-import           Control.Monad.IO.Class          (MonadIO)
+import           Control.Monad.IO.Class
+  ( MonadIO
+
+#ifdef DEBUG
+  , liftIO
+#endif
+  )
+
 import           Network.XMPP.Types
 
 debug :: MonadIO m => String -> XmppMonad m ()
