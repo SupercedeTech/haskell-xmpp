@@ -1,5 +1,9 @@
 # Changelog for haskell-xmpp
 
+## Version 2.0.4 - 2022.05.24
++ Add bounds to cabal for haxml, which introduces runtime
+  issues for certain version ranges.
+
 ## Version 2.0.3 - 2022.05.24
 + Add changes to tarball 🤦
 

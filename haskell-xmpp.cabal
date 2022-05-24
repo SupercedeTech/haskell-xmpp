@@ -1,6 +1,6 @@
 cabal-version: 2.0
 Name: haskell-xmpp
-Version: 2.0.3
+Version: 2.0.4
 License: BSD3
 License-File: LICENSE
 Author: Dmitry Astapov <dastapov@gmail.com>, pierre <k.pierre.k@gmail.com>, riskbook <support@riskbook.com>
@@ -42,7 +42,10 @@ library
                , pretty
                , array
                , mtl
-               , HaXml
+               -- all versions of HaXml after 1.25.6 break some xml queries
+               -- for xmpp messages. 
+               -- It's solved in 1.25.9, see: https://github.com/HaXml/HaXml/pull/7
+               , HaXml <= 1.25.6 || >= 1.25.9
                , network
                , network-bsd
                , html
