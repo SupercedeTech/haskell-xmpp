@@ -11,6 +11,7 @@ pkgs.haskell.lib.overrideCabal haskell-xmpp (drv: {
     configureFlags = ["-f-library-only"];
     doCheck = false;
     testHaskellDepends = [];
+    libraryToolDepends = [pkgs.cabal-install];
     testToolDepends = [];
     enableLibraryProfiling = false;
     enableSeparateDataOutput = false;

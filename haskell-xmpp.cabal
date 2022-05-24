@@ -1,6 +1,6 @@
 cabal-version: 2.0
 Name: haskell-xmpp
-Version: 2.0.1
+Version: 2.0.2
 License: BSD3
 License-File: LICENSE
 Author: Dmitry Astapov <dastapov@gmail.com>, pierre <k.pierre.k@gmail.com>, riskbook <support@riskbook.com>
