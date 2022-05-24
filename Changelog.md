@@ -1,5 +1,8 @@
 # Changelog for haskell-xmpp
 
+## Version 2.0.3 - 2022.05.24
++ Add changes to tarball 🤦
+
 ## Version 2.0.2 - 2022.05.24
 + Add coverage for 8.8.4, 8.10.7 and 9.0.2
 + Drop support for 8.6.5
