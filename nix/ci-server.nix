@@ -47,7 +47,6 @@ in
             port = 5432;
             enableTCPIP = true;
             initialScript = initSql;
-            package = pkgs.postgresql_9_6;
             authentication = pkgs.lib.mkOverride 10 ''
             host all all 127.0.0.1/8 trust
             local all all trust

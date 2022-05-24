@@ -1,5 +1,10 @@
 # Changelog for haskell-xmpp
 
+## Version 2.0.2 - 2022.05.24
++ Add coverage for 8.8.4, 8.10.7 and 9.0.2
++ Drop support for 8.6.5
++ Fix cabal base, set it to be lower then 5.
+
 ## Version 2.0.1 - 2020.11.25
 Bump cabal base version
 

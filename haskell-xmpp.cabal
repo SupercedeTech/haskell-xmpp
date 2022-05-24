@@ -37,7 +37,7 @@ flag debug
 library
   default-language: Haskell2010
   Hs-Source-Dirs: ./src
-  Build-Depends: base > 4.11.0.0 && <= 4.15.0.0
+  Build-Depends: base > 4.11.0.0 && <= 5
                , random
                , pretty
                , array
