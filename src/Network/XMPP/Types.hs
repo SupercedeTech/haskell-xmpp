@@ -385,4 +385,4 @@ instance Show (Sing 'Incoming) where
 instance Show (Sing 'Outgoing) where
   show _ = "outgoing"
 
-deriving instance Show (Sing (dir :: StanzaPurpose)) => Show (DataByPurpose dir ext) => Show ext => Show (Stanza t dir ext)
+deriving instance (Show (Sing (dir :: StanzaPurpose)), Show (DataByPurpose dir ext), Show ext) => Show (Stanza t dir ext)
