@@ -1,6 +1,11 @@
 [![Maintenance badge](https://img.shields.io/maintenance/yes/2020)](https://riskbook.com/)
 
+**Maintainer wanted**
+Supercede no longer uses haskell-xmpp.
+If you're using this library, please volunteer to take over maintainership.
+
 ![Logo](https://raw.githubusercontent.com/riskbook/haskell-xmpp/master/haskell-logo-xmpp.svg)
+
 
 Fully functional haskell-xmpp bindings used in production
 at riskbook.
